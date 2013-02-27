@@ -117,7 +117,7 @@ public class SogamoTest : MonoBehaviour {
 		authenticationResponseValid = true;
 		Debug.Log("Test 5 - SogamoAuthenticationResponse Validation Test\nPassed: " + authenticationResponseValid);
 				
-		string sessionId = "70be281adf2a4051a4e9d1c7fe9978ec";
+		string sessionId = "aa757014e57f49fc883eb767e0e4a5f8";
 		string playerId = "8304460";
 		this.StartTimer();
 		bool authenticationTestResult = SogamoAPI.TestAuthentication(sessionId, playerId);
@@ -166,7 +166,7 @@ public class SogamoTest : MonoBehaviour {
 		Debug.Log("Test 12 - Flush Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + flushTestResult);		
 		
 		this.StartTimer();
-		bool suggestionTestResult = SogamoAPI.TestSuggestion("70be281adf2a4051a4e9d1c7fe9978ec", "1024", "buy", 
+		bool suggestionTestResult = SogamoAPI.TestSuggestion(sessionId, "1024", "buy", 
 			"sogamo-x10.herokuapp.com");
 		this.StopTimer();
 		Debug.Log("Test 13 - Suggestion Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + suggestionTestResult);
@@ -177,7 +177,7 @@ public class SogamoTest : MonoBehaviour {
 			bool suggestionTestAsyncResult = (eventArgs.Suggestion != null);
 			Debug.Log("Test 14 - Suggestion (Async) Test\nPassed: " + suggestionTestAsyncResult);
 		};		
-		SogamoAPI.TestSuggestionAsync("70be281adf2a4051a4e9d1c7fe9978ec", "1024", "buy", "sogamo-x10.herokuapp.com", 
+		SogamoAPI.TestSuggestionAsync(sessionId, "1024", "buy", "sogamo-x10.herokuapp.com", 
 			responseHandler);
 		this.StopTimer();
 		Debug.Log("Test 14 - Suggestion (Async) Test\nCompleted (" + stopWatch.ElapsedMilliseconds + "ms)");
