@@ -74,8 +74,9 @@ public class SogamoTest : MonoBehaviour {
 		Debug.Log("Test 2 - SogamoSession Convert To JSON:\n" + PrintList(testSession.ConvertEventsToJSONList()));
 		
 		string apiDefinitionsFileName = "sogamo_api_definitions.plist";
-		string apiDefinitionaFilePath = Application.dataPath + Path.DirectorySeparatorChar + "Sogamo" 
-			+ Path.DirectorySeparatorChar + "Resources" + Path.DirectorySeparatorChar + apiDefinitionsFileName;	
+		string apiDefinitionaFilePath = Application.dataPath + Path.DirectorySeparatorChar + "Plugins" + 
+			Path.DirectorySeparatorChar + "Sogamo" + Path.DirectorySeparatorChar + "Resources" + 
+				Path.DirectorySeparatorChar + apiDefinitionsFileName;	
 		
 		bool apiDefinitionsValid = false;
 		SogamoAPIDefinitions apiDefinitions = null;
