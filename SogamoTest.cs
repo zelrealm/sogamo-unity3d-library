@@ -182,7 +182,7 @@ public class SogamoTest : MonoBehaviour {
 		this.StopTimer();
 		Debug.Log("Test 14 - Suggestion (Async) Test\nCompleted (" + stopWatch.ElapsedMilliseconds + "ms)");
 		
-//		SogamoAPI.Instance.SetFlushInterval(10);
+//		SogamoAPI.Instance.FlushInterval = 10;
 	}
 	
 	// Update is called once per frame

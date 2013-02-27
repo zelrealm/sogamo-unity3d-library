@@ -39,13 +39,18 @@ public sealed class SogamoAPI
 	
 	private static int MIN_FLUSH_INTERVAL = 0;
 	private static int MAX_FLUSH_INTERVAL = 3600;
-	private int flushInterval = 0;
+	
 	private Timer flushTimer;
 	private DateTime flushTimerStopTime;
 	
-	public delegate void SogamoSuggestionResponseEventHandler(SogamoSuggestionResponseEventArgs e);
+	private int flushInterval = 0;
+	public int FlushInterval {
+		get { return this.flushInterval; }
+		set { this.SetFlushInterval(value); }
+	}
 	
-   
+	public delegate void SogamoSuggestionResponseEventHandler(SogamoSuggestionResponseEventArgs e);
+	   
    	private SogamoAPI()
    	{
 		this.sessionDataFilePath = Application.persistentDataPath + Path.DirectorySeparatorChar + SESSIONS_DATA_FILE_NAME;		
@@ -129,7 +134,7 @@ public sealed class SogamoAPI
 	#endregion
 	
 	#region Set Flush Interval	
-	public void SetFlushInterval(int flushInterval)
+	private void SetFlushInterval(int flushInterval)
 	{
 		// Clamp the flush interval between the MIN and MAX values
 	    if (flushInterval < MIN_FLUSH_INTERVAL) {
@@ -158,11 +163,6 @@ public sealed class SogamoAPI
 				this.flushTimer.Start();		
 	        }
 	    }		
-	}
-	
-	public int FlushInterval()
-	{
-		return this.flushInterval;
 	}	
 	#endregion	
 	
