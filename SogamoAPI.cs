@@ -49,8 +49,9 @@ public sealed class SogamoAPI
    	private SogamoAPI()
    	{
 		this.sessionDataFilePath = Application.persistentDataPath + Path.DirectorySeparatorChar + SESSIONS_DATA_FILE_NAME;		
-		this.apiDefinitionsFilePath = Application.dataPath + Path.DirectorySeparatorChar + "Sogamo" 
-			+ Path.DirectorySeparatorChar + "Resources" + Path.DirectorySeparatorChar + API_DEFINITIONS_FILE_NAME;
+		this.apiDefinitionsFilePath = Application.dataPath + Path.DirectorySeparatorChar + "Plugins" + 
+			Path.DirectorySeparatorChar + "Sogamo" + Path.DirectorySeparatorChar + "Resources" + 
+				Path.DirectorySeparatorChar + API_DEFINITIONS_FILE_NAME;	
 		this.flushTimerStopTime = default(DateTime);
 		this.platformId = this.GetPlatformId();
 		
