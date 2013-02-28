@@ -130,7 +130,7 @@ public class SogamoTest : MonoBehaviour {
 		Debug.Log("Test 5 - SogamoAuthenticationResponse Validation Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " 
 			+ authenticationResponseValid);
 				
-		string sessionId = "aa757014e57f49fc883eb767e0e4a5f8";
+		string sessionId = "4f38af3614434a03af915278b5fc2913";
 		string playerId = "8304460";
 		this.StartTimer();
 		bool authenticationTestResult = SogamoAPI.TestAuthentication(sessionId, playerId);
