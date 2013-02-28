@@ -511,8 +511,8 @@ public sealed class SogamoAPI
 	{
 		// If there is an existing session, check to see if it is still valid
 		if (this.currentSession != null) {
-			if (this.HasCurrentSessionExpired()) {
-				SogamoAPI.Log(LogLevel.MESSAGE, ": Current session has expired. Creating a new session...");
+			if (this.IsCurrentSessionTemporary() ||  this.HasCurrentSessionExpired()) {
+				SogamoAPI.Log(LogLevel.MESSAGE, ": Current session is temporary / has expired. Creating a new session...");
 				SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
 				if (authenticationResponse != null) {				
 					ConvertOfflineSession(this.currentSession, authenticationResponse);					
@@ -525,7 +525,7 @@ public sealed class SogamoAPI
 				Dictionary<string, object> playerDict = new Dictionary<string, object>();
 				playerDict["platform"] = this.platformId;
 				this.PrivateTrackEvent("session", playerDict, this.currentSession);
-				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
+//				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
 			}
 		} else {
 			SogamoAPI.Log(LogLevel.MESSAGE, "No session detected. Creating a new one...");
@@ -752,6 +752,14 @@ public sealed class SogamoAPI
 	{
 		Guid newGuid = Guid.NewGuid();
 		return newGuid.ToString();
+	}
+	#endregion
+	
+	#region Convenience Methods
+	private bool IsCurrentSessionTemporary()
+	{
+		if (this.currentSession == null) return false;
+		return (this.currentSession.IsOfflineSession && this.currentSession.PlayerId == null);
 	}
 	#endregion
 	
