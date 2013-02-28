@@ -664,6 +664,7 @@ public sealed class SogamoAPI
 				SogamoAuthenticationResponse authenticationResponse = Authenticate(apiKey, playerId);
 				if (authenticationResponse != null) {
 					session.SessionId = authenticationResponse.SessionId;
+					session.PlayerId = authenticationResponse.PlayerId;
 					session.GameId = authenticationResponse.GameId;
 					session.LogCollectorURL = authenticationResponse.LogCollectorURL;
 					session.IsOfflineSession = false;
@@ -674,6 +675,12 @@ public sealed class SogamoAPI
 							sogamoEvent.EventParams["session_id"] = session.SessionId;
 						} else if (sogamoEvent.EventParams.ContainsKey("sessionId")) {
 							sogamoEvent.EventParams["sessionId"] = session.SessionId;
+						}
+						
+						if (sogamoEvent.EventParams.ContainsKey("player_id")) {
+							sogamoEvent.EventParams["player_id"] = session.PlayerId;
+						} else if (sogamoEvent.EventParams.ContainsKey("playerId")) {
+							sogamoEvent.EventParams["playerId"] = session.PlayerId;
 						}
 						
 						if (sogamoEvent.EventParams.ContainsKey("game_id")) {
