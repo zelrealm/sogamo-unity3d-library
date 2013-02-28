@@ -174,6 +174,11 @@ public sealed class SogamoAPI
 	#region Event Tracking
 	public void TrackEvent(string eventName, Dictionary<string, object> eventParams)
 	{
+		if (this.currentSession == null) {
+			SogamoAPI.Log(LogLevel.ERROR, "Unable to Track event. Current session is null!");
+			return;
+		}
+		
 		this.PrivateTrackEvent(eventName, eventParams, this.currentSession);
 	}
 	#endregion
