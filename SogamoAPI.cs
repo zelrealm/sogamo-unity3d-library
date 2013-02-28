@@ -418,11 +418,13 @@ public sealed class SogamoAPI
 		
 		SogamoAPI.Flush(this.allSessions);
 		
-		// Re-insert the current session into the allSessions array if removed
-		if (!this.allSessions.Contains(this.currentSession)) {
-			// Clear the existing events array in the current session since it has already been flushed
-			this.currentSession.Events.Clear();
-			this.allSessions.Add(this.currentSession);
+		if (this.currentSession != null) {
+			// Re-insert the current session into the allSessions array if removed
+			if (!this.allSessions.Contains(this.currentSession)) {
+				// Clear the existing events array in the current session since it has already been flushed
+				this.currentSession.Events.Clear();
+				this.allSessions.Add(this.currentSession);
+			}
 		}
 	}
 	
