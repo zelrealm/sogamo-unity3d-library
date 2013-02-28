@@ -256,6 +256,25 @@ public sealed class SogamoAPI
 			throw new ArgumentNullException("Player Dictionary is null!");
 		}		
 	}	
+	
+	private static void ValidateSessionsData(Dictionary<string, object> sessionsData)
+	{
+		object sessionsObject;
+		if (!sessionsData.TryGetValue(SESSIONS_KEY, out sessionsObject)) {
+			throw new Exception("'sessions' value is null!");
+		}		
+		if (!(sessionsObject is List<object>)) {
+			throw new Exception("'sessions' value is wrong object type!");
+		}				
+		
+		object currentSessionExistsObject;
+		if (!sessionsData.TryGetValue(CURRENT_SESSION_EXISTS_KEY, out currentSessionExistsObject)) {
+			throw new Exception("'currentSessionsExists' value is null!");
+		}		
+		if (!(currentSessionExistsObject is bool)) {
+			throw new Exception("'currentSessionsExists' value is wrong object type!");
+		}						
+	}	
 	#endregion
 	
 	#region Authentication
@@ -597,26 +616,7 @@ public sealed class SogamoAPI
 			SogamoAPI.Log(LogLevel.ERROR, "(Sessions Data Validation Error) " + exception.ToString());
 		}		
 	}
-	
-	private static void ValidateSessionsData(Dictionary<string, object> sessionsData)
-	{
-		object sessionsObject;
-		if (!sessionsData.TryGetValue(SESSIONS_KEY, out sessionsObject)) {
-			throw new Exception("'sessions' value is null!");
-		}		
-		if (!(sessionsObject is List<object>)) {
-			throw new Exception("'sessions' value is wrong object type!");
-		}				
 		
-		object currentSessionExistsObject;
-		if (!sessionsData.TryGetValue(CURRENT_SESSION_EXISTS_KEY, out currentSessionExistsObject)) {
-			throw new Exception("'currentSessionsExists' value is null!");
-		}		
-		if (!(currentSessionExistsObject is bool)) {
-			throw new Exception("'currentSessionsExists' value is wrong object type!");
-		}						
-	}
-	
 	private static void SaveSessionsData(List<SogamoSession> sessions, string sessionDataFilePath, bool currentSessionExists)
 	{
 		if (sessions == null || sessions.Count == 0) {
