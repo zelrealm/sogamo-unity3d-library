@@ -170,24 +170,26 @@ public class SogamoSession
 			throw new ArgumentNullException("Player ID param is null or empty!");
 		}
 		
-		if (string.IsNullOrEmpty(this.logCollectorURL)) {
-			throw new ArgumentNullException("Log Collector URL param is null or empty!");
-		}		
-		
-		if (string.IsNullOrEmpty(this.suggestionServerURL)) {
-			throw new ArgumentNullException("Suggestion Server URL param is null or empty!");
-		}		
-		
-		if (this.startDate == default(DateTime)) {
-			throw new ArgumentNullException("Start Date param is invalid!");
-		}
-		
-		if (this.gameId == int.MinValue) {
-			throw new ArgumentException("Game ID param is invalid!");
-		}
-		
 		if (this.events == null) {
 			throw new ArgumentNullException("Events param is null!");
+		}		
+		
+		if (!this.isOfflineSession) {
+			if (string.IsNullOrEmpty(this.logCollectorURL)) {
+				throw new ArgumentNullException("Log Collector URL param is null or empty!");
+			}		
+			
+			if (string.IsNullOrEmpty(this.suggestionServerURL)) {
+				throw new ArgumentNullException("Suggestion Server URL param is null or empty!");
+			}		
+			
+			if (this.startDate == default(DateTime)) {
+				throw new ArgumentNullException("Start Date param is invalid!");
+			}
+			
+			if (this.gameId == int.MinValue) {
+				throw new ArgumentException("Game ID param is invalid!");
+			}
 		}		
 	}
 	#endregion
