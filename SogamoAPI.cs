@@ -760,6 +760,19 @@ public sealed class SogamoAPI
 		return result;
 	}
 	
+	public bool TestSaveSessions()
+	{
+		bool result = false;
+		try {
+			SaveSessionsData(this.allSessions, this.sessionDataFilePath, this.currentSession != null);
+			result = true;
+		} catch (Exception exception) {
+			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());			
+		}		
+		
+		return result;		
+	}
+	
 	public static bool TestLoadSessions(string sessionTestDataFilePath)
 	{
 		Dictionary<string, object> sessionsData = LoadSessionsData(sessionTestDataFilePath);
