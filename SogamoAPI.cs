@@ -663,34 +663,7 @@ public sealed class SogamoAPI
 				offlineSessionsExist = true;
 				SogamoAuthenticationResponse authenticationResponse = Authenticate(apiKey, playerId);
 				if (authenticationResponse != null) {
-					session.SessionId = authenticationResponse.SessionId;
-					session.PlayerId = authenticationResponse.PlayerId;
-					session.GameId = authenticationResponse.GameId;
-					session.LogCollectorURL = authenticationResponse.LogCollectorURL;
-					session.IsOfflineSession = false;
-					
-					// Update all the tracked events data
-					foreach (SogamoEvent sogamoEvent in session.Events) {
-						if (sogamoEvent.EventParams.ContainsKey("session_id")) {
-							sogamoEvent.EventParams["session_id"] = session.SessionId;
-						} else if (sogamoEvent.EventParams.ContainsKey("sessionId")) {
-							sogamoEvent.EventParams["sessionId"] = session.SessionId;
-						}
-						
-						if (sogamoEvent.EventParams.ContainsKey("player_id")) {
-							sogamoEvent.EventParams["player_id"] = session.PlayerId;
-						} else if (sogamoEvent.EventParams.ContainsKey("playerId")) {
-							sogamoEvent.EventParams["playerId"] = session.PlayerId;
-						}
-						
-						if (sogamoEvent.EventParams.ContainsKey("game_id")) {
-							sogamoEvent.EventParams["game_id"] = session.GameId;
-						} else if (sogamoEvent.EventParams.ContainsKey("gameId")) {
-							sogamoEvent.EventParams["gameId"] = session.GameId;
-						}												
-					}
-					
-					SogamoAPI.Log(LogLevel.MESSAGE, "Successfully converted an offline session");
+					ConvertOfflineSession(session, authenticationResponse);					
 				} else {
 					SogamoAPI.Log(LogLevel.WARNING, "Attempt to convert an offline session failed");
 					result = false;
@@ -704,6 +677,72 @@ public sealed class SogamoAPI
 		}
 		
 		return result;
+	}
+	
+	private static void ConvertOfflineSession(SogamoSession offlineSession, SogamoAuthenticationResponse response)
+	{
+		if (offlineSession == null) {
+			SogamoAPI.Log(LogLevel.ERROR, "Offline session is null!");
+			return;
+		}
+		
+		if (!offlineSession.IsOfflineSession) {
+			SogamoAPI.Log(LogLevel.ERROR, "Session is not an offline session!");
+			return;			
+		}
+		
+		offlineSession.SessionId = response.SessionId;
+		offlineSession.PlayerId = response.PlayerId;
+		offlineSession.GameId = response.GameId;
+		offlineSession.LogCollectorURL = response.LogCollectorURL;
+		offlineSession.IsOfflineSession = false;
+							
+		List<SogamoEvent> convertedEvents = ConvertOfflineEvents(offlineSession.Events, response);
+		if (convertedEvents != null) {
+			offlineSession.Events = convertedEvents;
+		}
+		
+		SogamoAPI.Log(LogLevel.MESSAGE, "Successfully converted an offline session");		
+	}
+	
+	private static List<SogamoEvent> ConvertOfflineEvents(List<SogamoEvent> offlineEvents, SogamoAuthenticationResponse response)
+	{
+		if (offlineEvents == null) {
+			SogamoAPI.Log(LogLevel.ERROR, "Offline Events is null!");
+			return null;
+		}
+		
+		if (response == null) {
+			SogamoAPI.Log(LogLevel.ERROR, "Authentication Response is null!");
+			return null;			
+		}
+		
+		List<SogamoEvent> convertedEvents = new List<SogamoEvent>();
+		
+		// Update all the offline events params
+		foreach (SogamoEvent sogamoEvent in offlineEvents) {
+			if (sogamoEvent.EventParams.ContainsKey("session_id")) {
+				sogamoEvent.EventParams["session_id"] = response.SessionId;
+			} else if (sogamoEvent.EventParams.ContainsKey("sessionId")) {
+				sogamoEvent.EventParams["sessionId"] = response.SessionId;
+			}
+			
+			if (sogamoEvent.EventParams.ContainsKey("player_id")) {
+				sogamoEvent.EventParams["player_id"] = response.PlayerId;
+			} else if (sogamoEvent.EventParams.ContainsKey("playerId")) {
+				sogamoEvent.EventParams["playerId"] = response.PlayerId;
+			}
+			
+			if (sogamoEvent.EventParams.ContainsKey("game_id")) {
+				sogamoEvent.EventParams["game_id"] = response.GameId;
+			} else if (sogamoEvent.EventParams.ContainsKey("gameId")) {
+				sogamoEvent.EventParams["gameId"] = response.GameId;
+			}									
+			
+			convertedEvents.Add(sogamoEvent);
+		}		
+		
+		return convertedEvents;
 	}
 	
 	private string GenerateOfflineSessionId()
