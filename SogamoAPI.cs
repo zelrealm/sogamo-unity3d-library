@@ -62,10 +62,8 @@ public sealed class SogamoAPI
 		
 		try {
 			this.apiDefinitions = new SogamoAPIDefinitions(apiDefinitionsFilePath);
-			this.allSessions = LoadSessionData(this.sessionDataFilePath);			
-			if (this.allSessions.Count > 0) {
-				this.currentSession = this.allSessions[this.allSessions.Count - 1];
-			}				
+			Dictionary<string, object> sessionsData = LoadSessionsData(this.sessionDataFilePath);
+			this.ParseSessionsData(sessionsData);
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
 		}			
@@ -121,7 +119,8 @@ public sealed class SogamoAPI
 		backgroundWorker.DoWork += (sender, e) => 
 		{
 			this.Flush();
-			SaveSessions(this.allSessions, this.sessionDataFilePath);
+			bool currentSessionExists = (this.currentSession != null);
+			SaveSessionsData(this.allSessions, this.sessionDataFilePath, currentSessionExists);
 		};
 		backgroundWorker.RunWorkerCompleted += (sender, e) => 
 		{
@@ -379,7 +378,8 @@ public sealed class SogamoAPI
 			
 		try {			
 			this.Flush();
-			SaveSessions(this.allSessions, this.sessionDataFilePath);		
+			bool currentSessionExists = (this.currentSession != null);
+			SaveSessionsData(this.allSessions, this.sessionDataFilePath, currentSessionExists);		
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
 		}
@@ -543,28 +543,78 @@ public sealed class SogamoAPI
 	#endregion
 	
 	#region Session Persistence	
-	private static List<SogamoSession> LoadSessionData(string sessionDataFilePath)
+	
+	private static string CURRENT_SESSION_EXISTS_KEY = "currentSessionExists";
+	private static string SESSIONS_KEY = "sessions";
+	
+	private static Dictionary<string, object> LoadSessionsData(string sessionDataFilePath)
 	{
-		List<SogamoSession> sessions = new List<SogamoSession>();
-		if (File.Exists(sessionDataFilePath)) {
+//		List<SogamoSession> sessions = new List<SogamoSession>();		
+		Dictionary<string, object> sessionsData = null;
+		if (File.Exists(sessionDataFilePath)) {			
 			object sessionsDataObject = Plist.readPlist(sessionDataFilePath);
-			if (sessionsDataObject is List<object>) {
-				List<object> sessionObjects = (List<object>)sessionsDataObject;
-				foreach (object sessionObject in sessionObjects) {
-					SogamoSession session = SogamoSession.ReadFromDictionary((Dictionary<string, object>)sessionObject);
-					if (session != null) sessions.Add(session);
-				}
-			}
-										
-			SogamoAPI.Log(LogLevel.MESSAGE, "Sessions Count - " + sessions.Count);
+			
+			if (sessionsDataObject is Dictionary<string, object>) {
+				sessionsData = (Dictionary<string, object>)sessionsDataObject;	
+			}														
+			SogamoAPI.Log(LogLevel.MESSAGE, "Successfully loaded Sessions Data");
 		} else {
 			SogamoAPI.Log(LogLevel.MESSAGE, "No saved sessions file found!");
 		}
 		
-		return sessions;
+		return sessionsData;
 	}
 	
-	private static void SaveSessions(List<SogamoSession> sessions, string sessionDataFilePath)
+	private void ParseSessionsData(Dictionary<string, object> sessionsData)
+	{
+		if (sessionsData == null) {
+			SogamoAPI.Log(LogLevel.WARNING, "No prior saved sessions!");
+			this.allSessions = new List<SogamoSession>();
+			return;
+		}
+		
+		try {
+			ValidateSessionsData(sessionsData);
+			List<SogamoSession> sessions = new List<SogamoSession>();
+			List<object> sessionObjects = sessionsData[SESSIONS_KEY] as List<object>;
+			foreach (object sessionObject in sessionObjects) {
+				SogamoSession session = SogamoSession.ReadFromDictionary((Dictionary<string, object>)sessionObject);
+				if (session != null) sessions.Add(session);
+			}
+			
+			this.allSessions = sessions;
+			
+			bool currentSessionExists = (bool)sessionsData[CURRENT_SESSION_EXISTS_KEY];
+			if (currentSessionExists && this.allSessions.Count > 0) {
+				this.currentSession = this.allSessions[this.allSessions.Count - 1];
+			} else {
+				this.currentSession = null;
+			}					
+		} catch (Exception exception) {
+			SogamoAPI.Log(LogLevel.ERROR, "(Sessions Data Validation Error) " + exception.ToString());
+		}		
+	}
+	
+	private static void ValidateSessionsData(Dictionary<string, object> sessionsData)
+	{
+		object sessionsObject;
+		if (!sessionsData.TryGetValue(SESSIONS_KEY, out sessionsObject)) {
+			throw new Exception("'sessions' value is null!");
+		}		
+		if (!(sessionsObject is List<object>)) {
+			throw new Exception("'sessions' value is wrong object type!");
+		}				
+		
+		object currentSessionExistsObject;
+		if (!sessionsData.TryGetValue(CURRENT_SESSION_EXISTS_KEY, out currentSessionExistsObject)) {
+			throw new Exception("'currentSessionsExists' value is null!");
+		}		
+		if (!(currentSessionExistsObject is bool)) {
+			throw new Exception("'currentSessionsExists' value is wrong object type!");
+		}						
+	}
+	
+	private static void SaveSessionsData(List<SogamoSession> sessions, string sessionDataFilePath, bool currentSessionExists)
 	{
 		if (sessions == null || sessions.Count == 0) {
 			SogamoAPI.Log(LogLevel.ERROR, "No Sessions Data to save!");
@@ -576,7 +626,13 @@ public sealed class SogamoAPI
 			sessionsList.Add(session.WriteToDictionary());
 		}
 		
-		Plist.writeXml(sessionsList, sessionDataFilePath);
+		Dictionary<string, object> sessionsData = new Dictionary<string, object>()
+		{
+			{SESSIONS_KEY, sessionsList},
+			{CURRENT_SESSION_EXISTS_KEY, currentSessionExists}
+		};
+		
+		Plist.writeXml(sessionsData, sessionDataFilePath);
 //			SogamoAPI.Log(LogLevel.MESSAGE, "SessionsDataFilePath: " + this.sessionDataFilePath);
 		SogamoAPI.Log(LogLevel.MESSAGE, "Sesssions Data saved successfully!");
 	}
@@ -695,7 +751,7 @@ public sealed class SogamoAPI
 	{
 		bool result = false;
 		try {
-			SaveSessions(sessions, sessionTestDataFilePath);
+			SaveSessionsData(sessions, sessionTestDataFilePath, false);
 			result = true;
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());			
@@ -706,8 +762,16 @@ public sealed class SogamoAPI
 	
 	public static bool TestLoadSessions(string sessionTestDataFilePath)
 	{
-		List<SogamoSession> sessions = LoadSessionData(sessionTestDataFilePath);
-		return (sessions.Count > 0);
+		Dictionary<string, object> sessionsData = LoadSessionsData(sessionTestDataFilePath);
+		bool result = false;
+		try {
+			ValidateSessionsData(sessionsData);
+			result = true;
+		} catch (Exception exception){
+			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());			
+		}
+		
+		return result;
 	}
 	
 	public static bool TestAuthentication(string apiKey, string playerId)
