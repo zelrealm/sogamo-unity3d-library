@@ -118,12 +118,15 @@ public sealed class SogamoAPI
 			return;
 		}
 		
+		this.currentSession = null;
+		
 		BackgroundWorker backgroundWorker = new BackgroundWorker();
 		backgroundWorker.DoWork += (sender, e) => 
 		{
-			this.Flush();
-			bool currentSessionExists = (this.currentSession != null);
-			SaveSessionsData(this.allSessions, this.sessionDataFilePath, currentSessionExists);
+			if (ConvertOfflineSessions(this.allSessions, this.apiKey, this.playerId)) {
+				this.Flush();							
+			}
+			SaveSessionsData(this.allSessions, this.sessionDataFilePath, false);
 		};
 		backgroundWorker.RunWorkerCompleted += (sender, e) => 
 		{
@@ -646,7 +649,7 @@ public sealed class SogamoAPI
 	private static bool ConvertOfflineSessions(List<SogamoSession> sessions, string apiKey, string playerId)
 	{
 		if (sessions == null || sessions.Count == 0) {
-			SogamoAPI.Log(LogLevel.WARNING, "Sessions must not be empty!");
+			SogamoAPI.Log(LogLevel.WARNING, "No sessions to check for offline conversion");
 			return false;
 		}
 		
