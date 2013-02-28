@@ -165,16 +165,16 @@ public class SogamoSession
 		if (string.IsNullOrEmpty(this.sessionId)) {
 			throw new ArgumentNullException("Session ID param is null or empty!");
 		}
-		
-		if (string.IsNullOrEmpty(this.playerId)) {
-			throw new ArgumentNullException("Player ID param is null or empty!");
-		}
-		
+				
 		if (this.events == null) {
 			throw new ArgumentNullException("Events param is null!");
 		}		
 		
 		if (!this.isOfflineSession) {
+			if (string.IsNullOrEmpty(this.playerId)) {
+				throw new ArgumentNullException("Player ID param is null or empty!");
+			}			
+			
 			if (string.IsNullOrEmpty(this.logCollectorURL)) {
 				throw new ArgumentNullException("Log Collector URL param is null or empty!");
 			}		
