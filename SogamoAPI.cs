@@ -94,6 +94,7 @@ public sealed class SogamoAPI
 		this.playerDict = playerDict == null ? new Dictionary<string, object>() : playerDict;		
 
 		this.ValidateStartSession();
+		this.currentSession = this.CreateOfflineSession();
 			
 		BackgroundWorker backgroundWorker = new BackgroundWorker();
 		backgroundWorker.DoWork += (sender, e) => 
@@ -513,36 +514,33 @@ public sealed class SogamoAPI
 			if (this.HasCurrentSessionExpired()) {
 				SogamoAPI.Log(LogLevel.MESSAGE, ": Current session has expired. Creating a new session...");
 				SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
-				if (authenticationResponse != null) {
-					this.currentSession = this.CreateSession(authenticationResponse);	
-				} else {
-					this.currentSession = this.CreateOfflineSession();
+				if (authenticationResponse != null) {				
+					ConvertOfflineSession(this.currentSession, authenticationResponse);					
 				}
 				
 				this.playerDict["platform"] = this.platformId;
-				this.PrivateTrackEvent("session", this.playerDict, this.currentSession);
-				this.allSessions.Add(this.currentSession);
-				
+				this.PrivateTrackEvent("session", this.playerDict, this.currentSession);				
 			} else {
 				SogamoAPI.Log(LogLevel.MESSAGE, "Current session is still valid. No new session key required");
 				Dictionary<string, object> playerDict = new Dictionary<string, object>();
 				playerDict["platform"] = this.platformId;
 				this.PrivateTrackEvent("session", playerDict, this.currentSession);
-				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");
+				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
 			}
 		} else {
 			SogamoAPI.Log(LogLevel.MESSAGE, "No session detected. Creating a new one...");
 			SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
 			if (authenticationResponse != null) {
-				this.currentSession = this.CreateSession(authenticationResponse);	
-			} else {
-				this.currentSession = this.CreateOfflineSession();
-			}			
+				ConvertOfflineSession(this.currentSession, authenticationResponse);
+			}
 			
 			this.playerDict["platform"] = this.platformId;
 			this.PrivateTrackEvent("session", this.playerDict, this.currentSession);
-			this.allSessions.Add(this.currentSession);
 		}		
+		
+		if (!this.allSessions.Contains(this.currentSession)) {
+			this.allSessions.Add(this.currentSession);
+		}
 	}
 	
 	private SogamoSession CreateSession(SogamoAuthenticationResponse authenticationResponse)
