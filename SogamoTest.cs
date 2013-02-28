@@ -161,6 +161,11 @@ public class SogamoTest : MonoBehaviour {
 			+ offlineConvertionTestResult);	
 		
 		this.StartTimer();
+		bool flushTestResult = SogamoAPI.TestFlush(sessions);
+		this.StopTimer();		
+		Debug.Log("Test 10 - Flush Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + flushTestResult);		
+		
+		this.StartTimer();
 		SogamoAPI.Instance.StartSession(sessionId, playerId, null);		
 		this.StopTimer();		
 		Debug.Log("Test 10 - Starting a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
@@ -168,15 +173,11 @@ public class SogamoTest : MonoBehaviour {
 		// Sleep this thead for 2000ms to allow time for the StartSession to finish executing in the background
 		System.Threading.Thread.Sleep(2000);
 		
+	
 		this.StartTimer();
 		SogamoAPI.Instance.CloseSession();		
 		this.StopTimer();		
-		Debug.Log("Test 11 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
-		
-		this.StartTimer();
-		bool flushTestResult = SogamoAPI.TestFlush(sessions);
-		this.StopTimer();		
-		Debug.Log("Test 12 - Flush Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + flushTestResult);		
+		Debug.Log("Test 12 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");		
 		
 		this.StartTimer();
 		bool suggestionTestResult = SogamoAPI.TestSuggestion(sessionId, "1024", "buy", 
