@@ -12,7 +12,7 @@ using System.Collections.Generic;
 public sealed class SogamoAPI
 {
 	// Singleton Instance
-	private static readonly SogamoAPI instance = new SogamoAPI();	
+	private static SogamoAPI instance;	
 	
 	// Constants
 	private string SESSIONS_DATA_FILE_NAME = "sogamo_sessions.xml";
@@ -73,6 +73,9 @@ public sealed class SogamoAPI
    	{
 		get 
       	{
+			if (instance == null) {
+				instance = new SogamoAPI();
+			}
 			return instance; 
       	}
    	}
