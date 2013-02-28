@@ -59,6 +59,7 @@ public sealed class SogamoAPI
 				Path.DirectorySeparatorChar + API_DEFINITIONS_FILE_NAME;	
 		this.flushTimerStopTime = default(DateTime);
 		this.platformId = this.GetPlatformId();
+		this.currentSession = this.CreateOfflineSession();
 		
 		try {
 			this.apiDefinitions = new SogamoAPIDefinitions(apiDefinitionsFilePath);
@@ -94,7 +95,6 @@ public sealed class SogamoAPI
 		this.playerDict = playerDict == null ? new Dictionary<string, object>() : playerDict;		
 
 		this.ValidateStartSession();
-		this.currentSession = this.CreateOfflineSession();
 			
 		BackgroundWorker backgroundWorker = new BackgroundWorker();
 		backgroundWorker.DoWork += (sender, e) => 
@@ -856,6 +856,7 @@ public sealed class SogamoAPI
 		
 		try {
 			result = ConvertOfflineSessions(sessions, apiKey, playerId);
+//			Debug.Log("CONVERTED OFFLINE EVENT SESSION ID: " + sessions[0].Events[0].EventParams["session_id"]);
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());			
 		}		
