@@ -168,7 +168,7 @@ public class SogamoTest : MonoBehaviour {
 		this.StartTimer();
 		SogamoAPI.Instance.StartSession(sessionId, playerId, null);		
 		this.StopTimer();		
-		Debug.Log("Test 10 - Starting a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
+		Debug.Log("Test 11 - Starting a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
 		
 		// Sleep this thead for 2000ms to allow time for the StartSession to finish executing in the background
 		System.Threading.Thread.Sleep(2000);
