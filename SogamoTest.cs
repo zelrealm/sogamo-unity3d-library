@@ -69,20 +69,28 @@ public class SogamoTest : MonoBehaviour {
 		SogamoSession testSession = SogamoSession.ReadFromDictionary(testSessionDict);
 		SogamoSession testSession2 = SogamoSession.ReadFromDictionary(testSessionDict2);
 		
-		Debug.Log("Test 1 - SogamoSession Read/Write:\n" + PrintDictionary(testSession.WriteToDictionary()));
+		this.StartTimer();
+		bool writeSessionTestResult = (testSession.WriteToDictionary() != null);
+		this.StopTimer();		
+		Debug.Log("Test 1 - SogamoSession Read/Write:\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " 
+			+ writeSessionTestResult);
 		
-		Debug.Log("Test 2 - SogamoSession Convert To JSON:\n" + PrintList(testSession.ConvertEventsToJSONList()));
+		this.StartTimer();
+		bool convertEventsToJsonListTestResult = (testSession.ConvertEventsToJSONList() != null);
+		this.StopTimer();		
+		Debug.Log("Test 2 - SogamoSession Convert To JSON:\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + 
+			convertEventsToJsonListTestResult);
 		
 		string apiDefinitionsFileName = "sogamo_api_definitions.plist";
 		string apiDefinitionaFilePath = Application.dataPath + Path.DirectorySeparatorChar + "Plugins" + 
 			Path.DirectorySeparatorChar + "Sogamo" + Path.DirectorySeparatorChar + "Resources" + 
 				Path.DirectorySeparatorChar + apiDefinitionsFileName;	
 		
-		bool apiDefinitionsValid = false;
-		SogamoAPIDefinitions apiDefinitions = null;
-		apiDefinitions = new SogamoAPIDefinitions(apiDefinitionaFilePath);
-		apiDefinitionsValid = true;
-		Debug.Log("Test 3 - Parsing API Definitions Plist:\nPassed: " + apiDefinitionsValid);		
+		this.StartTimer();
+		SogamoAPIDefinitions apiDefinitions = new SogamoAPIDefinitions(apiDefinitionaFilePath);
+		this.StopTimer();
+		Debug.Log("Test 3 - Parsing API Definitions Plist:\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " 
+			+ (apiDefinitions != null));		
 						
 		Dictionary<string, object> testEventDict3 = new Dictionary<string, object>()
 		{
@@ -98,11 +106,13 @@ public class SogamoTest : MonoBehaviour {
 				}
 			}
 		};		
-		
-		bool testEventValid = false;
+				
 		SogamoEvent testEvent = SogamoEvent.ReadFromDictionary(testEventDict3);	
-		testEventValid = apiDefinitions.Definitions[testEvent.EventName].ValidateEvent(testEvent);
-		Debug.Log("Test 4 - SogamoEvent Validation Test\nPassed: " + testEventValid);
+		this.StartTimer();
+		bool testEventValid = apiDefinitions.Definitions[testEvent.EventName].ValidateEvent(testEvent);
+		this.StopTimer();
+		Debug.Log("Test 4 - SogamoEvent Validation Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " 
+			+ testEventValid);
 		
 		Dictionary<string, object> testAuthenticationResponseDict = new Dictionary<string, object>()
 		{
@@ -112,10 +122,13 @@ public class SogamoTest : MonoBehaviour {
 			{"lc_url", "http://lc_url"},
 			{"su_url", "http://su_url"}
 		};
-		bool authenticationResponseValid = false;
-		SogamoAuthenticationResponse.ReadFromDictionary(testAuthenticationResponseDict);
-		authenticationResponseValid = true;
-		Debug.Log("Test 5 - SogamoAuthenticationResponse Validation Test\nPassed: " + authenticationResponseValid);
+		
+		this.StartTimer();
+		SogamoAuthenticationResponse authenticationResponse = SogamoAuthenticationResponse.ReadFromDictionary(testAuthenticationResponseDict);
+		this.StopTimer();
+		bool authenticationResponseValid = authenticationResponse != null;
+		Debug.Log("Test 5 - SogamoAuthenticationResponse Validation Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " 
+			+ authenticationResponseValid);
 				
 		string sessionId = "aa757014e57f49fc883eb767e0e4a5f8";
 		string playerId = "8304460";
