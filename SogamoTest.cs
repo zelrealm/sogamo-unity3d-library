@@ -130,10 +130,10 @@ public class SogamoTest : MonoBehaviour {
 		Debug.Log("Test 5 - SogamoAuthenticationResponse Validation Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " 
 			+ authenticationResponseValid);
 				
-		string sessionId = "4f38af3614434a03af915278b5fc2913";
+		string apiKey = "4f38af3614434a03af915278b5fc2913";
 		string playerId = "8304460";
 		this.StartTimer();
-		bool authenticationTestResult = SogamoAPI.TestAuthentication(sessionId, playerId);
+		bool authenticationTestResult = SogamoAPI.TestAuthentication(apiKey, playerId);
 		this.StopTimer();
 		Debug.Log("Test 6 - Authentication Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + authenticationTestResult);
 		
@@ -155,7 +155,7 @@ public class SogamoTest : MonoBehaviour {
 			+ loadSessionsTestResult);
 		
 		this.StartTimer();
-		bool offlineConvertionTestResult = SogamoAPI.TestOfflineSessionConversion(sessions, sessionId, playerId);
+		bool offlineConvertionTestResult = SogamoAPI.TestOfflineSessionConversion(sessions, apiKey, playerId);
 		this.StopTimer();		
 		Debug.Log("Test 9 - Converting Offline Sessions Test\n Passed (" + stopWatch.ElapsedMilliseconds + "ms) : " 
 			+ offlineConvertionTestResult);	
@@ -174,8 +174,16 @@ public class SogamoTest : MonoBehaviour {
 		};
 		SogamoAPI.Instance.TrackEvent("inviteResponse", testEventParams);		
 		
+		Dictionary<string, object> userDetails = new Dictionary<string, object>()
+		{
+			{"username", "test_user"},
+			{"firstname", "test"},
+			{"lastname", "user"},
+			{"email", "test_user@test.com"}
+		};
+		
 		this.StartTimer();
-		SogamoAPI.Instance.StartSession(sessionId, playerId, null);		
+		SogamoAPI.Instance.StartSession(apiKey, playerId, userDetails);		
 		this.StopTimer();		
 		Debug.Log("Test 11 - Starting a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
 				
@@ -189,7 +197,7 @@ public class SogamoTest : MonoBehaviour {
 		Debug.Log("Test 12 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");		
 		
 		this.StartTimer();
-		bool suggestionTestResult = SogamoAPI.TestSuggestion(sessionId, "1024", "buy", 
+		bool suggestionTestResult = SogamoAPI.TestSuggestion(apiKey, "1024", "buy", 
 			"sogamo-x10.herokuapp.com");
 		this.StopTimer();
 		Debug.Log("Test 13 - Suggestion Test\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + suggestionTestResult);
@@ -200,7 +208,7 @@ public class SogamoTest : MonoBehaviour {
 			bool suggestionTestAsyncResult = (eventArgs.Suggestion != null);
 			Debug.Log("Test 14 - Suggestion (Async) Test\nPassed: " + suggestionTestAsyncResult);
 		};		
-		SogamoAPI.TestSuggestionAsync(sessionId, "1024", "buy", "sogamo-x10.herokuapp.com", 
+		SogamoAPI.TestSuggestionAsync(apiKey, "1024", "buy", "sogamo-x10.herokuapp.com", 
 			responseHandler);
 		this.StopTimer();
 		Debug.Log("Test 14 - Suggestion (Async) Test\nCompleted (" + stopWatch.ElapsedMilliseconds + "ms)");
