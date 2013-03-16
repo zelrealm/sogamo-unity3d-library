@@ -13,7 +13,7 @@
 					<key>required</key>
 					<string>YES</string>
 					<key>type</key>
-					<string>BOOL</string>
+					<string>NSString</string>
 				</dict>
 				<key>suggestion</key>
 				<dict>
