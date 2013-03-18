@@ -193,7 +193,25 @@ public sealed class SogamoAPI
 	
 	public SogamoSuggestionResponse GetSuggestion(string suggestionType)
 	{
-		return SogamoAPI.GetSuggestion(this.apiKey, this.playerId, suggestionType, this.currentSession.SuggestionServerURL);
+		if (this.currentSession == null || string.IsNullOrEmpty(this.apiKey) || string.IsNullOrEmpty(this.playerId)) {
+			SogamoAPI.Log(LogLevel.ERROR, "Unable to request suggestion. Call StartSession() first!");
+			return null;
+		}
+		
+		if (string.IsNullOrEmpty(this.currentSession.SuggestionServerURL)) {
+			SogamoAPI.Log(LogLevel.ERROR, "Unable to request suggestion. Suggestion Server URL is missing!");
+			return null;			
+		}		
+				
+		SogamoSuggestionResponse suggestionResponse = null;		
+		try {
+			suggestionResponse = SogamoAPI.GetSuggestion(this.apiKey, this.playerId, suggestionType, this.currentSession.SuggestionServerURL);
+		} catch (Exception e) {
+			// Failed Request
+			SogamoAPI.Log(LogLevel.ERROR, "(Suggestion): " + e);							
+		} 
+		
+		return suggestionResponse;		
 	}
 
 	private static void GetSuggestionAsync(string apiKey, string playerId, string suggestionType, 
@@ -207,13 +225,15 @@ public sealed class SogamoAPI
 		};
 		backgroundWorker.RunWorkerCompleted += (sender, e) => 
 		{
-			if (e.Error != null) {
-				SogamoAPI.Log(LogLevel.ERROR, "(BACKGROUND) " + e.Error);
-			} else {
-				if (e.Result != null) {
-					SogamoSuggestionResponse suggestionResponse = e.Result as SogamoSuggestionResponse;
-					handler(new SogamoSuggestionResponseEventArgs(suggestionResponse.Suggestion));
+			try {				
+				if (e.Error != null) {				
+					SogamoAPI.Log(LogLevel.ERROR, "(SUGGESTION BACKGROUND) " + e.Error);			
+					handler(new SogamoSuggestionResponseEventArgs(null, e.Error));
+				} else {
+					handler(new SogamoSuggestionResponseEventArgs(e.Result as SogamoSuggestionResponse, null));
 				}
+			} catch (Exception exception) {
+				Debug.Log("SogamoSuggestionResponseEventHandler Exception: " + exception);
 			}
 		};
 		backgroundWorker.RunWorkerAsync();		
@@ -223,29 +243,25 @@ public sealed class SogamoAPI
 	{
 		SogamoSuggestionResponse suggestionResponse = null;
 		
-		try {
-			using (SogamoWebClient client = new SogamoWebClient()) 
-			{
-				string requestString = string.Format("http://{0}?apiKey={1}&playerId={2}&suggestionType={3}", 
-					suggestionServerURL, apiKey, playerId, suggestionType);
-				string responseString = client.DownloadString(requestString);
-				// Check response string is not empty
-				if (!string.IsNullOrEmpty(responseString)) {
-					object jsonResponseObject = Json.Deserialize(responseString);
-					// Check decided JSON format is as expected, a Dictionary<string, object>
-					if (jsonResponseObject is Dictionary<string, object>) {
-						// Wrap JSON response into a SogamoSuggesionResponse
-						suggestionResponse = SogamoSuggestionResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
-					}
-				}			
-			}
-		} catch (Exception e) {
-			// Failed Request
-			SogamoAPI.Log(LogLevel.ERROR, "(Suggestion): " + e);							
+		using (SogamoWebClient client = new SogamoWebClient()) 
+		{
+			string requestString = string.Format("http://{0}?apiKey={1}&playerId={2}&suggestionType={3}", 
+				suggestionServerURL, apiKey, playerId, suggestionType);
+			string responseString = client.DownloadString(requestString);
+			// Check response string is not empty
+			if (!string.IsNullOrEmpty(responseString)) {
+				object jsonResponseObject = Json.Deserialize(responseString);
+				// Check decided JSON format is as expected, a Dictionary<string, object>
+				if (jsonResponseObject is Dictionary<string, object>) {
+					// Wrap JSON response into a SogamoSuggesionResponse
+					suggestionResponse = SogamoSuggestionResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
+				}
+			}			
 		} 
 		
 		return suggestionResponse;
 	}
+	
 	#endregion
 	
 	// Private Methods
@@ -881,8 +897,16 @@ public sealed class SogamoAPI
 	
 	public static bool TestSuggestion(string apiKey, string playerId, string suggestionType, string suggestionServerURL)
 	{
-		SogamoSuggestionResponse suggestionResponse = SogamoAPI.GetSuggestion(apiKey, playerId, suggestionType, suggestionServerURL);
-		return suggestionResponse != null;
+		bool result = true;
+		try {
+			SogamoSuggestionResponse suggestionResponse = SogamoAPI.GetSuggestion(apiKey, playerId, suggestionType, suggestionServerURL);		
+			result = suggestionResponse != null;			
+		} catch (Exception exception) {
+			Debug.Log("TestSuggestion Error: " + exception);
+			result = false;
+		}
+		
+		return result;
 	}
 	
 	public static void TestSuggestionAsync(string apiKey, string playerId, string suggestionType, 

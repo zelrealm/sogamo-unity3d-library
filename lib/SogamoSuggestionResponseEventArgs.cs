@@ -1,21 +1,32 @@
 using System;
 
 public class SogamoSuggestionResponseEventArgs : EventArgs {
-	private string suggestion;
-	public string Suggestion {
-		get { return suggestion; }
+
+	private SogamoSuggestionResponse suggestionResponse;
+	public SogamoSuggestionResponse SuggestionResponse {
+		get { return suggestionResponse; }
 	}
 	
-	public SogamoSuggestionResponseEventArgs(string suggestion) : base() {
-		this.suggestion = suggestion;
+	private Exception error;
+	public Exception Error {
+		get { return error; }
+	}
+		
+	public SogamoSuggestionResponseEventArgs(SogamoSuggestionResponse suggestionResponse, Exception error) : base() {
+		this.suggestionResponse = suggestionResponse;
+		this.error = error;
 		
 		this.Validate();
 	}
 	
 	private void Validate()
 	{
-		if (string.IsNullOrEmpty(this.suggestion)) {
-			throw new ArgumentNullException("Suggestion param is null or empty!");
+		if (this.SuggestionResponse == null && this.Error == null) {
+			throw new ArgumentNullException("'SuggestionResponse' and 'Error' param cannot be both null!");
+		}
+		
+		if (this.SuggestionResponse != null && this.Error != null) {
+			throw new ArgumentException("Either 'SuggestionResponse' or 'Error' param must be null");
 		}
 	}
 }
