@@ -118,7 +118,7 @@ public class SogamoEventDefinition
 		// Check each given parameter
 		foreach (KeyValuePair<string, object> eventParam in sogamoEvent.EventParams) {
 			if (!this.parameters.ContainsKey(eventParam.Key)) {
-				SogamoAPI.Log(SogamoAPI.LogLevel.ERROR, "" + eventParam.Key + " is not a valid paramter!");
+				SogamoAPI.Log(SogamoAPI.LogLevel.ERROR, "" + eventParam.Key + " is not a valid parameter!");
 				result = false;
 				return result;				
 			}
