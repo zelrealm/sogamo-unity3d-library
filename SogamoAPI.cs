@@ -698,6 +698,7 @@ public sealed class SogamoAPI
 		offlineSession.PlayerId = response.PlayerId;
 		offlineSession.GameId = response.GameId;
 		offlineSession.LogCollectorURL = response.LogCollectorURL;
+		offlineSession.SuggestionServerURL = response.SuggestionServerURL;
 		offlineSession.IsOfflineSession = false;
 							
 		List<SogamoEvent> convertedEvents = ConvertOfflineEvents(offlineSession.Events, response);
