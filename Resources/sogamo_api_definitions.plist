@@ -11,7 +11,7 @@
 				<key>response</key>
 				<dict>
 					<key>required</key>
-					<string>YES</string>
+					<true/>
 					<key>type</key>
 					<string>NSString</string>
 				</dict>
@@ -20,7 +20,7 @@
 					<key>type</key>
 					<string>NSString</string>
 					<key>required</key>
-					<string>YES</string>
+					<true/>
 				</dict>
 			</dict>
 			<key>event_index</key>
@@ -150,6 +150,13 @@
 					<true/>
 					<key>type</key>
 					<string>NSDate</string>
+				</dict>
+				<key>platform</key>
+				<dict>
+					<key>required</key>
+					<false/>
+					<key>type</key>
+					<string>NSNumber</string>
 				</dict>
 			</dict>
 		</dict>
