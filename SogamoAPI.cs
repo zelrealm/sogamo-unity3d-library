@@ -416,7 +416,7 @@ public sealed class SogamoAPI
 		}
 	}
 	
-	private void Flush() {
+	public void Flush() {
 		if (this.allSessions == null || this.allSessions.Count == 0) {
 			SogamoAPI.Log(LogLevel.WARNING, "No Sessions Data to flush!");
 			return;
