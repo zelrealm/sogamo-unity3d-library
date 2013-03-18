@@ -23,9 +23,11 @@ The first thing you need to do is to initialize a SogamoAPI session with your  A
 ###C\# ###
 Start session with just API Key
 
-	SogamoAPI.Instance.StartSession(API_KEY);
+	string apiKey = YOUR_API_KEY;
+	SogamoAPI.Instance.StartSession(apiKey);
 Start session with API Key, Player ID (can be either their Facebook ID or an internal Identifier if your app provides one) and Player Details
 	
+	string playerId = A_PLAYER_ID;
 	Dictionary<string, object> userDetails = new Dictionary<string, object>()
 	{
 		{"username", "test_user"},
@@ -33,20 +35,23 @@ Start session with API Key, Player ID (can be either their Facebook ID or an int
 		{"lastname", "user"},
 		{"email", "test_user@test.com"}
 	};	
-	SogamoAPI.Instance.StartSession(API_KEY, PLAYER_ID, userDetails);
+	SogamoAPI.Instance.StartSession(apiKey, playerId, userDetails);
 	
 ### Javascript ###
 Start session with just API Key
 
-	SogamoAPI.Instance.StartSession(API_KEY);
+	var apiKey : String = YOUR_API_KEY;
+	SogamoAPI.Instance.StartSession(apiKey);
 Start session with API Key, Player ID (can be either their Facebook ID or an internal Identifier if your app provides one) and Player Details
 
+	var playerId = A_PLAYER_ID;
 	var userDetails : Dictionary.<String, Object> = new Dictionary.<String, Object>();
 	userDetails["username"] = "test_user";
 	userDetails["firstname"] = "test";
 	userDetails["lastname"] = "user";
 	userDetails["email"] = "test_user@test.com";
-	SogamoAPI.Instance.StartSession(API_KEY, PLAYER_ID, userDetails);
+	
+	SogamoAPI.Instance.StartSession(apiKey, playerId, userDetails);
 	
 ## Tracking Events ##
 After starting a session, you are ready to track events. This can be done with the following method:
@@ -102,7 +107,7 @@ _Note: The value for the FlushInterval must be in seconds, and between 0 and 360
 
 	SogamoAPI.Instance.FlushInterval = 30; // Event Data will be flushed every 30s
 
-### Javascript ###
+#### Javascript ####
 
 	SogamoAPI.Instance.FlushInterval = 30; // Event Data will be flushed every 30s
 	
@@ -116,9 +121,58 @@ _Note: This method runs asynchronously, so it will return immediately._
 
 	SogamoAPI.Instance.Flush();
 
-### Javascript ###
+#### Javascript ####
 
 	SogamoAPI.Instance.Flush();
+	
+## Suggestions ##
+There are two ways to request suggestions via the SogamoAPI.
+
+### Synchronous Request ###
+The GetSuggestion method is a synchronous call and will therefore block the main thread. This is not the recommended way to request suggestions, but it included here as it is the only option for javascript users. Refer to the 'Asynchronous Request' section below.
+
+If the request is unsuccessful, the GetSuggestion() method will return null. **Always check if the return value is null before using it.**
+
+####C\# ####
+
+	string suggestionType = A_SUGGESTION_TYPE;
+	SogamoSuggestionResponse suggestionResponse = SogamoAPI.Instance.GetSuggestion(suggestionType);
+	if (suggestionResponse != null) {
+		string suggestion = suggestionResponse.Suggestion;
+	}
+
+#### Javascript ####
+
+	var suggestionType : String = A_SUGGESTION_TYPE;
+	var suggestionResponse : SogamoSuggestionResponse = SogamoAPI.Instance.GetSuggestion(suggestionType);
+	if (suggestionResponse != null) {
+		var suggestion : String = suggestionResponse.Suggestion;
+	}
+	
+### Asynchronous Request ###
+The GetSuggestionAsync method is (as the name suggests) asynchronous and uses a delegate to handle the callback. 
+
+If the asynchronous request is unsucessful, the Error property of eventArgs will contain the relevant Exception. If the request suceeds, the SuggestionResponse property will contain a valid SogamoSuggestionResponse.
+
+**Always check if the request failed (by checking the Error property) before trying to access the SuggestionResponse property.**
+
+_Note: This option is not available to javascript users._
+
+####C\# ####
+
+	string suggestionType = A_SUGGESTION_TYPE;
+	SogamoAPI.SogamoSuggestionResponseEventHandler responseHandler = (eventArgs) => 
+	{
+		if (eventArgs.Error != null) {
+			Debug.Log("Suggestion Request Error:" + eventArgs.Error);
+			// Handle the failed request
+		} else {
+			string suggestion = eventArgs.SuggestionResponse.Suggestion;
+			// Handle the successful request
+		}		
+	};	
+		
+	SogamoAPI.Instance.GetSuggestionAsync(suggestionType, responseHandler);
 
 ## Performance Implications ##
 
