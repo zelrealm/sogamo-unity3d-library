@@ -75,19 +75,53 @@ For a full list of the events that can be tracked, visit the [Sogamo website](ht
 		testEventParams["respondedPlayerStatus"] = "accepted";		
 		SogamoAPI.Instance.TrackEvent("inviteResponse", testEventParams);
 
-## Closing a Session ##
-Finally, to send the accumulated data to Sogamo, you need to close the session.
+## Sending Data ##
+Event Data is _flushed_ (i.e transmitted) to the Sogamo server at several points:
 
-###C\# ###
+- When closing a session
+- If the periodic flush is enabled
+- If the **Flush()** method is called
+
+### Closing a Session ###
+Note: You must close a session first if you intend to start a new session with a different API Key.
+
+####C\# ####
 
 	SogamoAPI.Instance.CloseSession();
 
-### Javascript ###
+#### Javascript ####
 
 	SogamoAPI.Instance.CloseSession();
 	
+### Periodic Flush ###
+When the periodic flush is enabled, SogamoAPI will flush accumulated event data at the specified intervals.
+
+_Note: The value for the FlushInterval must be in seconds, and between 0 and 3600._
+
+####C\# ####
+
+	SogamoAPI.Instance.FlushInterval = 30; // Event Data will be flushed every 30s
+
+### Javascript ###
+
+	SogamoAPI.Instance.FlushInterval = 30; // Event Data will be flushed every 30s
+	
+### Flush() ###
+For those who prefer more direct control, use the Flush() method. 
+**StartSession() must have been called and be allowed to complete before attempting to call Flush()**
+
+_Note: This method runs asynchronously, so it will return immediately._
+
+####C\# ####
+
+	SogamoAPI.Instance.Flush();
+
+### Javascript ###
+
+	SogamoAPI.Instance.Flush();
+
 ## Performance Implications ##
 
-The Sogamo Unity3D plugin runs all of its major functions on a background thread, so it does not affect the performance of your application.
+The Sogamo Unity3D plugin runs all of its major functions (Start / Closing a session, flushing data) on a background thread, so it does not affect the performance of your application.
 
 [Final Folder Structure]:https://github.com/zelrealm/sogamo-unity3d-library/raw/master/images/Final%20Folder%20Structure.jpg "Final Folder Structure"
