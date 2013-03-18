@@ -171,6 +171,7 @@ public class SogamoTest : MonoBehaviour {
 			{"respondedPlayerId", "1024"},
 			{"responseDatetime", DateTime.Now},
 			{"respondedPlayerStatus", "accepted"},
+			{"successful", "1"}
 		};
 		SogamoAPI.Instance.TrackEvent("inviteResponse", testEventParams);		
 		
@@ -190,9 +191,15 @@ public class SogamoTest : MonoBehaviour {
 		// Sleep this thead for 2000ms to allow time for the StartSession to finish executing in the background
 		System.Threading.Thread.Sleep(2000);
 		
-	
+//		SogamoSuggestionResponse suggestionResponse = SogamoAPI.Instance.GetSuggestion("buy");
+//		if (suggestionResponse != null) {
+//			Debug.Log("Synchronous Suggestion Request: " + suggestionResponse.Suggestion);
+//		} else {
+//			Debug.Log("Synchronous Suggestion Request Error");
+//		}		
+		
 		this.StartTimer();
-		SogamoAPI.Instance.CloseSession();		
+		SogamoAPI.Instance.CloseSession();	
 		this.StopTimer();		
 		Debug.Log("Test 12 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");		
 		
@@ -204,10 +211,11 @@ public class SogamoTest : MonoBehaviour {
 		
 		this.StartTimer();
 		SogamoAPI.SogamoSuggestionResponseEventHandler responseHandler = (eventArgs) => 
-		{
-			bool suggestionTestAsyncResult = (eventArgs.Suggestion != null);
+		{			
+			bool suggestionTestAsyncResult = (eventArgs.SuggestionResponse != null);
 			Debug.Log("Test 14 - Suggestion (Async) Test\nPassed: " + suggestionTestAsyncResult);
-		};		
+		};
+		
 		SogamoAPI.TestSuggestionAsync(apiKey, "1024", "buy", "sogamo-x10.herokuapp.com", 
 			responseHandler);
 		this.StopTimer();
