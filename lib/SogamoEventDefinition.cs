@@ -192,7 +192,10 @@ public class SogamoEventDefinition
 					break;
 				case "NSNumber":
 					mappedType = typeof(double);
-					break;		
+					break;
+				case "BOOL":
+					mappedType = typeof(bool);
+					break;				
 			}
 			
 			return mappedType;

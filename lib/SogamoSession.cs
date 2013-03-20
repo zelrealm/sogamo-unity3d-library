@@ -230,6 +230,8 @@ public class SogamoSession
 		} else if (paramObject is DateTime) {
 			DateTime paramDateTime = (DateTime)paramObject;
 			paramString = paramDateTime.ToUnixTimestamp().ToString();
+		} else if (paramObject is bool) {
+			paramString = Convert.ToInt32((bool)paramObject).ToString();
 		} else {
 			paramString = paramObject.ToString();
 		}
