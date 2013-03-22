@@ -84,7 +84,7 @@ For a full list of the events that can be tracked, visit the [Sogamo website](ht
 Event Data is _flushed_ (i.e transmitted) to the Sogamo server at several points:
 
 - When closing a session
-- If the periodic flush is enabled
+- Whenever the periodic flush is triggered (if it is enabled)
 - If the **Flush()** method is called
 
 ### Closing a Session ###
@@ -101,7 +101,7 @@ Note: You must close a session first if you intend to start a new session with a
 ### Periodic Flush ###
 When the periodic flush is enabled, SogamoAPI will flush accumulated event data at the specified intervals.
 
-_Note: The value for the FlushInterval must be in seconds, and between 0 and 3600._
+_Note: The value for the FlushInterval must be in seconds, and between 0 (the default) and 3600._
 
 ####C\# ####
 
