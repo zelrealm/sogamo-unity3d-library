@@ -13,14 +13,14 @@
 					<key>required</key>
 					<true/>
 					<key>type</key>
-					<string>NSString</string>
+					<string>BOOL</string>
 				</dict>
 				<key>suggestion</key>
 				<dict>
-					<key>type</key>
-					<string>NSString</string>
 					<key>required</key>
 					<true/>
+					<key>type</key>
+					<string>NSString</string>
 				</dict>
 			</dict>
 			<key>event_index</key>

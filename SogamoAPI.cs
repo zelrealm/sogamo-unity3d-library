@@ -16,7 +16,7 @@ public sealed class SogamoAPI
 	
 	// Constants
 	private string SESSIONS_DATA_FILE_NAME = "sogamo_sessions.xml";
-	private string API_DEFINITIONS_FILE_NAME = "sogamo_api_definitions.plist";		
+	private string API_DEFINITIONS_FILE_NAME = "sogamo_api_definitions.xml";		
 	private static string AUTHENTICATION_SERVER_URL = "http://auth.sogamo.com";
 	private static string BATCH_SUFFIX = "batch";	
 	private int SESSION_TIME_OUT_PERIOD = 43200;

@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using UnityEngine;
 using SogamoPlistUtil;
 using System.Collections.Generic;
 
@@ -29,10 +31,35 @@ public class SogamoAPIDefinitions
 			return;			
 		}
 		
-		object apiDefinitionsObject = Plist.readPlist(definitionsFilePath);
+		object apiDefinitionsObject = null;
+		string apiDefinitionFileName = Path.GetFileNameWithoutExtension(definitionsFilePath);
+		TextAsset apiDefinitionsTextAsset = Resources.Load(apiDefinitionFileName) as TextAsset;
+		if (apiDefinitionsTextAsset != null) {
+			apiDefinitionsObject = Plist.readPlistSource(apiDefinitionsTextAsset.text);
+			this.ParseAPIDefinitionsData(apiDefinitionsObject);
+		} else {
+			throw new ArgumentException("API Definitions File: '" + apiDefinitionFileName + "' could not be found!");
+		}			
+		
+		this.ParseAPIDefinitionsData(apiDefinitionsObject);
+	}
+	
+	private void LoadAPIDefinitionsDataFromResources(string apiDefinitionFileName)
+	{
+		TextAsset apiDefinitionsTextAsset = Resources.Load(apiDefinitionFileName) as TextAsset;
+		if (apiDefinitionsTextAsset != null) {
+			object apiDefinitionsObject = Plist.readPlistSource(apiDefinitionsTextAsset.text);
+			this.ParseAPIDefinitionsData(apiDefinitionsObject);
+		} else {
+			throw new ArgumentException("API Definitions could not be found!");
+		}
+	}
+	
+	private void ParseAPIDefinitionsData(object apiDefinitionsData)
+	{
 		// Check parsed plist object is in the expected format
-		if (apiDefinitionsObject is Dictionary<string, object>) {
-			Dictionary<string, object> apiDefinitionsDict = (Dictionary<string, object>)apiDefinitionsObject;			
+		if (apiDefinitionsData is Dictionary<string, object>) {
+			Dictionary<string, object> apiDefinitionsDict = (Dictionary<string, object>)apiDefinitionsData;			
 			Dictionary<string, object> definitionsDict = (Dictionary<string, object>)apiDefinitionsDict[DEFINITIONS_DATA_API_DEFINITIONS_KEY];			
 
 			Dictionary<string, SogamoEventDefinition> definitions = new Dictionary<string, SogamoEventDefinition>();
@@ -49,7 +76,7 @@ public class SogamoAPIDefinitions
 		} else {
 			SogamoAPI.Log(SogamoAPI.LogLevel.ERROR, "API Definitions Plist is in invalid!");
 			return;			
-		}
+		}		
 	}
 	
 	public string GetEventIndexForName(string eventName)

@@ -81,7 +81,7 @@ public class SogamoTest : MonoBehaviour {
 		Debug.Log("Test 2 - SogamoSession Convert To JSON:\nPassed (" + stopWatch.ElapsedMilliseconds + "ms): " + 
 			convertEventsToJsonListTestResult);
 		
-		string apiDefinitionsFileName = "sogamo_api_definitions.plist";
+		string apiDefinitionsFileName = "sogamo_api_definitions.xml";
 		string apiDefinitionaFilePath = Application.dataPath + Path.DirectorySeparatorChar + "Plugins" + 
 			Path.DirectorySeparatorChar + "Sogamo" + Path.DirectorySeparatorChar + "Resources" + 
 				Path.DirectorySeparatorChar + apiDefinitionsFileName;	
