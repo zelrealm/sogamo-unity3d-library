@@ -385,7 +385,12 @@ public sealed class SogamoAPI
 		}
 	}
 	
-	public void Flush(SogamoFlushCompleteHandler handler) {
+	public void Flush()
+	{
+		this.Flush((string errorString) => {});
+	}
+	
+	private void Flush(SogamoFlushCompleteHandler handler) {
 		if (this.allSessions == null || this.allSessions.Count == 0) {
 			SogamoAPI.Log(LogLevel.WARNING, "No Sessions Data to flush!");
 			return;
