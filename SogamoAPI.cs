@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
 using System.Timers;
@@ -18,6 +18,7 @@ public sealed class SogamoAPI
 	private string SESSIONS_DATA_FILE_NAME = "sogamo_sessions.xml";
 	private string API_DEFINITIONS_FILE_NAME = "sogamo_api_definitions.xml";		
 	private static string AUTHENTICATION_SERVER_URL = "http://auth.sogamo.com";
+	private static string NETWORK_DELEGATE_GAMEOBJECT_NAME = "SogamoAPI Network Delegate";
 	private static string BATCH_SUFFIX = "batch";	
 	private int SESSION_TIME_OUT_PERIOD = 43200;
 	
@@ -49,8 +50,14 @@ public sealed class SogamoAPI
 		set { this.SetFlushInterval(value); }
 	}
 	
+	public delegate void SogamoAPIAuthenticationTestHandler(bool result);	
+	public delegate void SogamoAPIFlushTestHandler(bool result);
+	public delegate void SogamoAPIConvertOfflineSessionsTestHandler(bool result);
 	public delegate void SogamoSuggestionResponseEventHandler(SogamoSuggestionResponseEventArgs e);
-	   
+	public delegate void SogamoAuthenticationResponseHandler(SogamoAuthenticationResponse response, string errorString);		   
+	public delegate void SogamoFlushCompleteHandler(string errorString);
+	public delegate void SogamoConvertOfflineSessionsCompleteHandler(string errorString);
+	
    	private SogamoAPI()
    	{
 		this.sessionDataFilePath = Application.persistentDataPath + Path.DirectorySeparatorChar + SESSIONS_DATA_FILE_NAME;		
@@ -95,21 +102,17 @@ public sealed class SogamoAPI
 		this.playerDict = playerDict == null ? new Dictionary<string, object>() : playerDict;		
 
 		this.ValidateStartSession();
-			
-		BackgroundWorker backgroundWorker = new BackgroundWorker();
-		backgroundWorker.DoWork += (sender, e) => 
-		{
+		try {
 			this.GetNewSessionIfNeeded();
-			ConvertOfflineSessions(this.allSessions, this.apiKey, this.playerId);			
-		};
-		backgroundWorker.RunWorkerCompleted += (sender, e) => 
-		{
-			if (e.Error != null) {
-				SogamoAPI.Log(LogLevel.ERROR, "(BACKGROUND) " + e.Error);
-			}
+			SogamoAPI.ConvertNextOfflineSession(this.allSessions, 0, this.apiKey, this.playerId, (string errorString) => {
+				if (errorString != null) {
+					SogamoAPI.Log(LogLevel.ERROR, errorString);
+				}
+			});			
 			this.hasSessionStarted = true;
-		};
-		backgroundWorker.RunWorkerAsync();		
+		} catch (Exception exception) {
+			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
+		}	
 	}
 	
 	public void CloseSession()
@@ -121,21 +124,11 @@ public sealed class SogamoAPI
 		
 		this.currentSession = null;
 		
-		BackgroundWorker backgroundWorker = new BackgroundWorker();
-		backgroundWorker.DoWork += (sender, e) => 
-		{
-			if (ConvertOfflineSessions(this.allSessions, this.apiKey, this.playerId)) {
-				this.Flush();							
-			}
-			SaveSessionsData(this.allSessions, this.sessionDataFilePath, false);
-		};
-		backgroundWorker.RunWorkerCompleted += (sender, e) => 
-		{
-			if (e.Error != null) {
-				SogamoAPI.Log(LogLevel.ERROR, "(BACKGROUND) " + e.Error);
-			}
-		};
-		backgroundWorker.RunWorkerAsync();				
+		SogamoAPI.ConvertNextOfflineSession(this.allSessions, 0, this.apiKey, this.playerId, (string errorString) => {	 
+			this.Flush((string flushErrorString) => {
+				SaveSessionsData(this.allSessions, this.sessionDataFilePath, false);
+			});											
+		});		
 	}
 	#endregion
 	
@@ -191,75 +184,32 @@ public sealed class SogamoAPI
 		SogamoAPI.GetSuggestionAsync(this.apiKey, this.playerId, this.currentSession.SuggestionServerURL, suggestionType, handler);
 	}
 	
-	public SogamoSuggestionResponse GetSuggestion(string suggestionType)
-	{
-		if (this.currentSession == null || string.IsNullOrEmpty(this.apiKey) || string.IsNullOrEmpty(this.playerId)) {
-			SogamoAPI.Log(LogLevel.ERROR, "Unable to request suggestion. Call StartSession() first!");
-			return null;
-		}
-		
-		if (string.IsNullOrEmpty(this.currentSession.SuggestionServerURL)) {
-			SogamoAPI.Log(LogLevel.ERROR, "Unable to request suggestion. Suggestion Server URL is missing!");
-			return null;			
-		}		
-				
-		SogamoSuggestionResponse suggestionResponse = null;		
-		try {
-			suggestionResponse = SogamoAPI.GetSuggestion(this.apiKey, this.playerId, suggestionType, this.currentSession.SuggestionServerURL);
-		} catch (Exception e) {
-			// Failed Request
-			SogamoAPI.Log(LogLevel.ERROR, "(Suggestion): " + e);							
-		} 
-		
-		return suggestionResponse;		
-	}
-
 	private static void GetSuggestionAsync(string apiKey, string playerId, string suggestionType, 
 		string suggestionServerURL, SogamoSuggestionResponseEventHandler handler)
-	{
-		BackgroundWorker backgroundWorker = new BackgroundWorker();
-		backgroundWorker.DoWork += (sender, e) => 
-		{
-			SogamoSuggestionResponse suggestionResponse = SogamoAPI.GetSuggestion(apiKey, playerId, suggestionType, suggestionServerURL);
-			e.Result = suggestionResponse;
-		};
-		backgroundWorker.RunWorkerCompleted += (sender, e) => 
-		{
-			try {				
-				if (e.Error != null) {				
-					SogamoAPI.Log(LogLevel.ERROR, "(SUGGESTION BACKGROUND) " + e.Error);			
-					handler(new SogamoSuggestionResponseEventArgs(null, e.Error));
-				} else {
-					handler(new SogamoSuggestionResponseEventArgs(e.Result as SogamoSuggestionResponse, null));
-				}
-			} catch (Exception exception) {
-				Debug.Log("SogamoSuggestionResponseEventHandler Exception: " + exception);
-			}
-		};
-		backgroundWorker.RunWorkerAsync();		
-	}
-	
-	private static SogamoSuggestionResponse GetSuggestion(string apiKey, string playerId, string suggestionType, string suggestionServerURL) 
-	{
-		SogamoSuggestionResponse suggestionResponse = null;
-		
-		using (SogamoWebClient client = new SogamoWebClient()) 
-		{
-			string requestString = string.Format("http://{0}?apiKey={1}&playerId={2}&suggestionType={3}", 
+	{		
+		string requestString = string.Format("http://{0}?apiKey={1}&playerId={2}&suggestionType={3}", 
 				suggestionServerURL, apiKey, playerId, suggestionType);
-			string responseString = client.DownloadString(requestString);
-			// Check response string is not empty
-			if (!string.IsNullOrEmpty(responseString)) {
-				object jsonResponseObject = Json.Deserialize(responseString);
-				// Check decided JSON format is as expected, a Dictionary<string, object>
-				if (jsonResponseObject is Dictionary<string, object>) {
-					// Wrap JSON response into a SogamoSuggesionResponse
-					suggestionResponse = SogamoSuggestionResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
-				}
-			}			
-		} 
 		
-		return suggestionResponse;
+		SogamoAPINetworkDelegate networkDelegate = SogamoAPI.GetNetworkDelegate();
+		networkDelegate.StartSuggestionRequest(requestString, (string successfulResponseString, string errorString) => {
+			// Check response string is not empty
+			try {			
+				if (!string.IsNullOrEmpty(successfulResponseString)) {
+					object jsonResponseObject = Json.Deserialize(successfulResponseString);
+					// Check if JSON format is as expected, a Dictionary<string, object>
+					if (jsonResponseObject is Dictionary<string, object>) {
+						// Wrap JSON response into a SogamoSuggesionResponse
+						SogamoSuggestionResponse suggestionResponse = SogamoSuggestionResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
+						handler(new SogamoSuggestionResponseEventArgs(suggestionResponse, null));
+					}
+				} else if (!string.IsNullOrEmpty(errorString)) {
+					SogamoAPI.Log(LogLevel.ERROR, errorString);
+					handler(new SogamoSuggestionResponseEventArgs(null, new Exception(errorString)));
+				}					
+			} catch (Exception exception) {
+				handler(new SogamoSuggestionResponseEventArgs(null, exception));
+			}
+		});
 	}
 	
 	#endregion
@@ -303,38 +253,38 @@ public sealed class SogamoAPI
 	#endregion
 	
 	#region Authentication
-	private static SogamoAuthenticationResponse Authenticate(string apiKey, string playerId)
-	{
-		SogamoAuthenticationResponse authenticationResponse = null;
-		
-		try {
-			using (SogamoWebClient client = new SogamoWebClient()) 
-			{
-				string requestString = 
-					string.Format("{0}?apiKey={1}&playerId={2}", AUTHENTICATION_SERVER_URL, apiKey, playerId);
-				string responseString = client.DownloadString(requestString);
-				// Check response string is not empty
-				if (!string.IsNullOrEmpty(responseString)) {
-					object jsonResponseObject = Json.Deserialize(responseString);
+	private static void Authenticate(string apiKey, string playerId, SogamoAuthenticationResponseHandler handler)
+	{		
+		string requestString = string.Format("{0}?apiKey={1}&playerId={2}", AUTHENTICATION_SERVER_URL, apiKey, playerId);		
+		SogamoAPINetworkDelegate networkDelegate = SogamoAPI.GetNetworkDelegate();
+		networkDelegate.StartAuthenticationRequest(requestString, (string successfulResponseString, string errorString)=> {
+			if (errorString != null) {
+				SogamoAPI.Log(LogLevel.ERROR, errorString);
+			} else {
+				if (!string.IsNullOrEmpty(successfulResponseString)) {
+					object jsonResponseObject = Json.Deserialize(successfulResponseString);
 					// Check decided JSON format is as expected, a Dictionary<string, object>
 					if (jsonResponseObject is Dictionary<string, object>) {
 						// Wrap JSON response into a SogamoAuthenticationResponse
 						try {
-							authenticationResponse = 
+							SogamoAuthenticationResponse authenticationResponse = 
 								SogamoAuthenticationResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
+							handler (authenticationResponse, null);
 						} catch (Exception exception) {
 							SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
+							handler (null, exception.ToString());
 						}						
+					} else {
+						handler (null, "Authentication JSON Response is invalid!");
 					}
-				}
+				} else {
+					handler (null, "Authentication Response is empty!");
+				}				
 			}
-		} catch (Exception e) {
-			// Failed Request
-			SogamoAPI.Log(LogLevel.ERROR, "(Authentication) " + e);							
-		} 
-		
-		return authenticationResponse;
+		});
 	}
+	
+	
 	#endregion
 	
 	#region Track Events
@@ -424,118 +374,117 @@ public sealed class SogamoAPI
 		}			
 			
 		try {			
-			this.Flush();
-			bool currentSessionExists = (this.currentSession != null);
-			SaveSessionsData(this.allSessions, this.sessionDataFilePath, currentSessionExists);		
+			this.Flush((string errorString) => {
+				if (errorString == null) {
+					bool currentSessionExists = (this.currentSession != null);
+					SaveSessionsData(this.allSessions, this.sessionDataFilePath, currentSessionExists);		
+				}	
+			});
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
 		}
 	}
 	
-	public void Flush() {
+	public void Flush(SogamoFlushCompleteHandler handler) {
 		if (this.allSessions == null || this.allSessions.Count == 0) {
 			SogamoAPI.Log(LogLevel.WARNING, "No Sessions Data to flush!");
 			return;
 		}		
 		
-		SogamoAPI.Flush(this.allSessions);
+		SogamoAPI.FlushNextSession(this.allSessions, (string errorString) => {
+			// Check if flush completed successfully
+			if (errorString == null) {
+				if (this.currentSession != null) {
+					// Re-insert the current session into the allSessions array if removed
+					if (!this.allSessions.Contains(this.currentSession)) {
+						// Clear the existing events array in the current session since it has already been flushed
+						this.currentSession.Events.Clear();
+						this.allSessions.Add(this.currentSession);
+					}
+				}					
+			} else {
+				SogamoAPI.Log(LogLevel.ERROR, "Flush operation failed!");
+			}	
+			
+			handler(errorString);
+		});
 		
-		if (this.currentSession != null) {
-			// Re-insert the current session into the allSessions array if removed
-			if (!this.allSessions.Contains(this.currentSession)) {
-				// Clear the existing events array in the current session since it has already been flushed
-				this.currentSession.Events.Clear();
-				this.allSessions.Add(this.currentSession);
-			}
-		}
 	}
 	
-	private static void Flush(List<SogamoSession> sessions)
+	private static void FlushNextSession(List<SogamoSession> sessions, SogamoFlushCompleteHandler handler)
 	{
-		if (sessions == null || sessions.Count == 0) {
+		if (sessions == null) {
 			SogamoAPI.Log(LogLevel.WARNING, "No Sessions Data to flush!");
+			handler("No Sessions Data to flush!");
 			return;
 		}
-						
- 		SogamoAPI.Log(LogLevel.MESSAGE, "Attemping to flush sessions data...");
- 				
-		List<SogamoSession> sessionsToRemove = new List<SogamoSession>();
-		// Convert each session's event into an array of JSON strings
-		foreach (SogamoSession session in sessions) {
-			string logCollectorURL = session.LogCollectorURL;
-			string flushURLString = string.Format("http://{0}/{1}?", logCollectorURL.TrimEnd(new char[]{'/'}), BATCH_SUFFIX);					
-			List<string> jsonEvents = session.ConvertEventsToJSONList();
-			
-			// if jsonEvents is empty, mark it for removal and skip this loop iteration
-			if (jsonEvents.Count == 0) {
-				sessionsToRemove.Add(session);
-				continue;
-			}
-			
-			StringBuilder urlString = new StringBuilder();
-			urlString.Append(flushURLString);
-						
-			// Add each event as a param to the url string
-			for (int i = 0; i < jsonEvents.Count; i++) {				
-				string encodedJSONEvent = string.Format("{0}={1}&", i, Uri.EscapeDataString(jsonEvents[i]));
-				urlString.Append(encodedJSONEvent);
-//				SogamoAPI.Log(LogLevel.MESSAGE ,jsonEvents[i]);
-			}
-			
-			// Delete trailing & symbol
-			urlString = urlString.Remove(urlString.Length-1, 1);			
-//			SogamoAPI.Log("FINAL URL for Session : " + session.sessionId + " = " + urlString);
-			
-			// Attempt to send aggregated session data
-			try {
-				using (SogamoWebClient client = new SogamoWebClient()) 
-				{
-					client.DownloadString(urlString.ToString());
-					sessionsToRemove.Add(session);
-					SogamoAPI.Log(LogLevel.MESSAGE, "Session " + session.SessionId + " successfully sent!");
-				}				
-			} catch (Exception exception) {
-				SogamoAPI.Log(LogLevel.ERROR, "(Flushing)" + exception);
-				break;
-			}
+		
+		if (sessions.Count == 0) {
+			// Flush operation completed without errors
+			handler(null);
+			return;
 		}
 		
-		// After successfuly delivery, delete from the sessions array
-		if (sessionsToRemove.Count > 0) {
-			foreach (SogamoSession sessionToRemove in sessionsToRemove) {
-				sessions.Remove(sessionToRemove);
+		SogamoSession sessionToFlush = sessions[0];
+						
+ 		SogamoAPI.Log(LogLevel.MESSAGE, "Attemping to flush session " + sessionToFlush);
+		SogamoAPINetworkDelegate networkDelegate = SogamoAPI.GetNetworkDelegate();
+ 				
+		// Convert session events into an array of JSON strings	
+		string logCollectorURL = sessionToFlush.LogCollectorURL;
+		string flushURLString = string.Format("http://{0}/{1}?", logCollectorURL.TrimEnd(new char[]{'/'}), BATCH_SUFFIX);					
+		List<string> jsonEvents = sessionToFlush.ConvertEventsToJSONList();
+			
+		// if jsonEvents is empty, mark it for removal and skip this loop iteration
+		if (jsonEvents.Count == 0) {
+			sessions.Remove(sessionToFlush);
+			SogamoAPI.FlushNextSession(sessions, handler);
+		}
+			
+		StringBuilder urlString = new StringBuilder();
+		urlString.Append(flushURLString);
+						
+		// Add each event as a param to the url string
+		for (int i = 0; i < jsonEvents.Count; i++) {				
+			string encodedJSONEvent = string.Format("{0}={1}&", i, Uri.EscapeDataString(jsonEvents[i]));
+			urlString.Append(encodedJSONEvent);
+//				SogamoAPI.Log(LogLevel.MESSAGE ,jsonEvents[i]);
+		}
+			
+		// Delete trailing & symbol
+		urlString = urlString.Remove(urlString.Length-1, 1);			
+//		SogamoAPI.Log("FINAL URL for Session : " + session.sessionId + " = " + urlString);
+			
+		// Attempt to send aggregated session data
+		networkDelegate.StartFlush(urlString.ToString(), (string successfulResponseString, string errorString) => {
+			if (!string.IsNullOrEmpty(errorString)) {
+				SogamoAPI.Log(LogLevel.ERROR, "(Flushing)" + errorString);	
+				handler (errorString);
+				return;
+			} else {						
+				SogamoAPI.Log(LogLevel.MESSAGE, "Session " + sessionToFlush.SessionId + " successfully sent!");
+				sessions.Remove(sessionToFlush);
+				SogamoAPI.FlushNextSession(sessions, handler);				
 			}
-		}				
+		});
 	}
-	
+		
 	#endregion
 	
-	#region Session Creation / Renewal
-	private bool HasCurrentSessionExpired()
-	{
-		if (this.currentSession == null) {
-			SogamoAPI.Log(LogLevel.ERROR, "There is no current session");
-			return true;
-		}
-		
-		DateTime sessionExpiryDate = this.currentSession.StartDate.AddSeconds(SESSION_TIME_OUT_PERIOD);
-		
-		return DateTime.UtcNow > sessionExpiryDate.ToUniversalTime();
-	}
-	
+	#region Session Creation / Renewal	
 	private void GetNewSessionIfNeeded()
 	{
 		// If there is an existing session, check to see if it is still valid
 		if (this.currentSession != null) {
-			if (this.IsCurrentSessionTemporary() ||  this.HasCurrentSessionExpired()) {
-				SogamoAPI.Log(LogLevel.MESSAGE, ": Current session is temporary / has expired. Creating a new session...");
-				SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
-				if (authenticationResponse != null) {				
-					ConvertOfflineSession(this.currentSession, authenticationResponse);					
-				}
-				
-				this.playerDict["platform"] = this.platformId;
-				this.PrivateTrackEvent("session", this.playerDict, this.currentSession);				
+			if (this.IsCurrentSessionTemporary()) {
+				Authenticate(this.apiKey, this.playerId, (SogamoAuthenticationResponse authenticationResponse, string errorString)=> {
+					if (authenticationResponse != null) {				
+						ConvertOfflineSession(this.currentSession, authenticationResponse);					
+					}
+					
+					this.playerDict["platform"] = this.platformId;
+					this.PrivateTrackEvent("session", this.playerDict, this.currentSession);					
+				});				
 			} else {
 				SogamoAPI.Log(LogLevel.MESSAGE, "Current session is still valid. No new session key required");
 				Dictionary<string, object> playerDict = new Dictionary<string, object>();
@@ -545,13 +494,14 @@ public sealed class SogamoAPI
 			}
 		} else {
 			SogamoAPI.Log(LogLevel.MESSAGE, "No session detected. Creating a new one...");
-			SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
-			if (authenticationResponse != null) {
-				ConvertOfflineSession(this.currentSession, authenticationResponse);
-			}
-			
-			this.playerDict["platform"] = this.platformId;
-			this.PrivateTrackEvent("session", this.playerDict, this.currentSession);
+			Authenticate(this.apiKey, this.playerId, (SogamoAuthenticationResponse authenticationResponse, string errorString)=> {
+				if (authenticationResponse != null) {
+					ConvertOfflineSession(this.currentSession, authenticationResponse);
+				}
+				
+				this.playerDict["platform"] = this.platformId;
+				this.PrivateTrackEvent("session", this.playerDict, this.currentSession);				
+			});
 		}		
 		
 		if (!this.allSessions.Contains(this.currentSession)) {
@@ -632,10 +582,14 @@ public sealed class SogamoAPI
 			
 			bool currentSessionExists = (bool)sessionsData[CURRENT_SESSION_EXISTS_KEY];
 			if (currentSessionExists && this.allSessions.Count > 0) {
-				this.currentSession = this.allSessions[this.allSessions.Count - 1];
-			} else {
-				this.currentSession = null;
-			}					
+				SogamoSession mostRecentSession = this.allSessions[this.allSessions.Count - 1];
+				if (this.HasSessionExpired(mostRecentSession)) {
+					SogamoAPI.Log(LogLevel.MESSAGE, "Current session has expired. Using Temporary session instead");
+				} else {
+					SogamoAPI.Log(LogLevel.MESSAGE, "Current session is still valid. No new session key required");
+					this.currentSession = mostRecentSession;
+				}
+			} 				
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, "(Sessions Data Validation Error) " + exception.ToString());
 		}		
@@ -667,35 +621,44 @@ public sealed class SogamoAPI
 	#endregion
 	
 	#region Offline Sessions
-	private static bool ConvertOfflineSessions(List<SogamoSession> sessions, string apiKey, string playerId)
+	private static void ConvertNextOfflineSession(List<SogamoSession> sessions, int index, string apiKey, 
+		string playerId, SogamoConvertOfflineSessionsCompleteHandler handler)
 	{
 		if (sessions == null || sessions.Count == 0) {
 			SogamoAPI.Log(LogLevel.WARNING, "No sessions to check for offline conversion");
-			return false;
+			handler("No Sessions Data to convert!");
+			return;
 		}
 		
-		bool result = true;
-		bool offlineSessionsExist = false;
+		if (index < 0 || index > sessions.Count) {
+			SogamoAPI.Log(LogLevel.ERROR, "Invalid Index Parameter");
+			handler("Invalid Index Paramter");
+			return;			
+		}
 		
-		foreach (SogamoSession session in sessions) {
-			if (session.IsOfflineSession) {
-				offlineSessionsExist = true;
-				SogamoAuthenticationResponse authenticationResponse = Authenticate(apiKey, playerId);
+		if (index == sessions.Count) {
+			// Convert offline Sessions operation completed without errors
+			handler(null);
+			return;			
+		}
+		
+		SogamoSession sessionToConvert = sessions[index];
+		
+		// Check if session is an offline session
+		if (sessionToConvert.IsOfflineSession) {
+			Authenticate(apiKey, playerId, (SogamoAuthenticationResponse authenticationResponse, string errorString)=> {
 				if (authenticationResponse != null) {
-					ConvertOfflineSession(session, authenticationResponse);					
+					ConvertOfflineSession(sessionToConvert, authenticationResponse);
+					SogamoAPI.ConvertNextOfflineSession(sessions, index+1, apiKey, playerId, handler);
 				} else {
 					SogamoAPI.Log(LogLevel.WARNING, "Attempt to convert an offline session failed");
-					result = false;
-					break;
-				}
-			}
+					handler(errorString);
+					return;
+				}					
+			});
+		} else {
+			SogamoAPI.ConvertNextOfflineSession(sessions, index+1, apiKey, playerId, handler);
 		}
-		
-		if (offlineSessionsExist == false) {
-			SogamoAPI.Log(LogLevel.WARNING, "No Offline sessions to convert!");
-		}
-		
-		return result;
 	}
 	
 	private static void ConvertOfflineSession(SogamoSession offlineSession, SogamoAuthenticationResponse response)
@@ -778,6 +741,19 @@ public sealed class SogamoAPI
 		if (this.currentSession == null) return false;
 		return (this.currentSession.IsOfflineSession && this.currentSession.PlayerId == null);
 	}
+	
+	private bool HasSessionExpired(SogamoSession session)
+	{
+		if (session == null) {
+			SogamoAPI.Log(LogLevel.ERROR, "Session is nil!");
+			return true;
+		}
+		
+		DateTime sessionExpiryDate = session.StartDate.AddSeconds(SESSION_TIME_OUT_PERIOD);
+		
+		return DateTime.UtcNow > sessionExpiryDate.ToUniversalTime();
+	}
+	
 	#endregion
 	
 	#region Determine Platform ID
@@ -807,6 +783,25 @@ public sealed class SogamoAPI
 		return platformId;
 	}
 	#endregion
+	
+	#region Scene Manipulation
+	
+	private static SogamoAPINetworkDelegate GetNetworkDelegate()
+	{
+		SogamoAPINetworkDelegate networkDelegate = null;
+		GameObject networkDelegateGO = GameObject.Find(NETWORK_DELEGATE_GAMEOBJECT_NAME);
+		if (networkDelegateGO == null) {
+			// Create network delegate
+			networkDelegateGO = new GameObject(NETWORK_DELEGATE_GAMEOBJECT_NAME);
+			networkDelegate = networkDelegateGO.AddComponent<SogamoAPINetworkDelegate>();
+		} else {
+			networkDelegate = networkDelegateGO.GetComponent<SogamoAPINetworkDelegate>();
+		}
+		
+		return networkDelegate;
+	}
+	
+	#endregion	
 		
 	#region Logging
 	
@@ -819,14 +814,14 @@ public sealed class SogamoAPI
 	
 	public static void Log(LogLevel level, string logString)
 	{
-		#if UNITY_EDITOR
+//		#if UNITY_EDITOR
 		string combinedLog = string.Format("SOGAMO {0}: {1}", level.ToString(), logString);
     	Debug.Log(combinedLog);
-  		#endif		
+//  	#endif		
 	}
 		
 	#endregion
-	
+		
 	#region Testing
 	
 	public static bool TestSaveSessions(List<SogamoSession> sessions, string sessionTestDataFilePath)
@@ -869,69 +864,40 @@ public sealed class SogamoAPI
 		return result;
 	}
 	
-	public static bool TestAuthentication(string apiKey, string playerId)
+	public static bool TestNetworkDelegate()
 	{
-		SogamoAuthenticationResponse authenticationResponse = Authenticate(apiKey, playerId);
-		return (authenticationResponse != null);
+		SogamoAPINetworkDelegate networkDelegate = GetNetworkDelegate();
+		return (networkDelegate != null);
 	}
 	
-	public static bool TestOfflineSessionConversion(List<SogamoSession> sessions, string apiKey, string playerId)
+	public static void TestAuthentication(string apiKey, string playerId, SogamoAPIAuthenticationTestHandler handler)
+	{		
+		Authenticate(apiKey, playerId, (SogamoAuthenticationResponse response, string errorString) => {
+			handler(response != null);
+		});
+	}
+	
+	public static void TestOfflineSessionConversion(List<SogamoSession> sessions, string apiKey, string playerId, 
+		SogamoAPIConvertOfflineSessionsTestHandler handler)
+	{		
+		SogamoAPI.ConvertNextOfflineSession(sessions, 0, apiKey, playerId, (string errorString) => {
+			handler(string.IsNullOrEmpty(errorString));
+		});
+	}
+	
+	public static void TestFlush(List<SogamoSession> sessions, SogamoAPIFlushTestHandler handler)
 	{
-		bool result = false;
+		SogamoAPI.FlushNextSession(sessions, (string errorString) => {
+			handler(string.IsNullOrEmpty(errorString));	
+		});
+	}
 		
-		try {
-			result = ConvertOfflineSessions(sessions, apiKey, playerId);
-//			Debug.Log("CONVERTED OFFLINE EVENT SESSION ID: " + sessions[0].Events[0].EventParams["session_id"]);
-		} catch (Exception exception) {
-			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());			
-		}		
-		
-		return result;
-	}
-	
-	public static bool TestFlush(List<SogamoSession> sessions)
-	{
-		SogamoAPI.Flush(sessions);
-		return sessions.Count == 0;
-	}
-	
-	public static bool TestSuggestion(string apiKey, string playerId, string suggestionType, string suggestionServerURL)
-	{
-		bool result = true;
-		try {
-			SogamoSuggestionResponse suggestionResponse = SogamoAPI.GetSuggestion(apiKey, playerId, suggestionType, suggestionServerURL);		
-			result = suggestionResponse != null;			
-		} catch (Exception exception) {
-			Debug.Log("TestSuggestion Error: " + exception);
-			result = false;
-		}
-		
-		return result;
-	}
-	
 	public static void TestSuggestionAsync(string apiKey, string playerId, string suggestionType, 
 		string suggestionServerURL, SogamoSuggestionResponseEventHandler handler)
 	{
 		SogamoAPI.GetSuggestionAsync(apiKey, playerId, suggestionType, suggestionServerURL, handler);
 	}
 	
-	#endregion
-	
-	#region WebClient Subclass
-  	private class SogamoWebClient : WebClient
-    {
-		public SogamoWebClient()
-        {
-
-        }
-
-        protected override WebRequest GetWebRequest(Uri uri)
-        {
-            WebRequest w = base.GetWebRequest(uri);
-            w.Timeout = 10 * 1000; // 10s
-            return w;
-        }
-    }	
 	#endregion
 }
 
