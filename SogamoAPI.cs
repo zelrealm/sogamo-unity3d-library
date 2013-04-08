@@ -23,9 +23,7 @@ public sealed class SogamoAPI
 	private int SESSION_TIME_OUT_PERIOD = 43200;
 	
 	// Class Variables
-	
-	private bool hasSessionStarted = false;
-	
+		
 	private string sessionDataFilePath;		
 	private string apiDefinitionsFilePath;
 	private int platformId;
@@ -50,6 +48,11 @@ public sealed class SogamoAPI
 		set { this.SetFlushInterval(value); }
 	}
 	
+	private bool isSessionStarting;
+	public bool IsSessionStarting {
+		get { return this.isSessionStarting; }
+	}
+	
 	public delegate void SogamoAPIAuthenticationTestHandler(bool result);	
 	public delegate void SogamoAPIFlushTestHandler(bool result);
 	public delegate void SogamoAPIConvertOfflineSessionsTestHandler(bool result);
@@ -67,6 +70,7 @@ public sealed class SogamoAPI
 		this.flushTimerStopTime = default(DateTime);
 		this.platformId = this.GetPlatformId();
 		this.currentSession = this.CreateOfflineSession();
+		this.isSessionStarting = false;
 		
 		try {
 			this.apiDefinitions = new SogamoAPIDefinitions(apiDefinitionsFilePath);
@@ -97,33 +101,33 @@ public sealed class SogamoAPI
 	
 	public void StartSession(string apiKey, string playerId, Dictionary<string, object> playerDict)
 	{
+		if (this.isSessionStarting) {
+			SogamoAPI.Log(LogLevel.ERROR, "Cannot start a new session while a previous session is still starting up!");
+			return;
+		}
+		
+		this.isSessionStarting = true;
 		this.apiKey = apiKey;
 		this.playerId = playerId;
 		this.playerDict = playerDict == null ? new Dictionary<string, object>() : playerDict;		
 
 		this.ValidateStartSession();
 		try {
-			this.GetNewSessionIfNeeded();
-			SogamoAPI.ConvertNextOfflineSession(this.allSessions, 0, this.apiKey, this.playerId, (string errorString) => {
-				if (errorString != null) {
-					SogamoAPI.Log(LogLevel.ERROR, errorString);
-				}
-			});			
-			this.hasSessionStarted = true;
+			this.GetNewSessionIfNeeded();	
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
+			this.isSessionStarting = false;
 		}	
 	}
 	
 	public void CloseSession()
 	{
-		if (!this.hasSessionStarted) {
-			SogamoAPI.Log(LogLevel.ERROR, "StartSession() must have called first and allowed to finish before CloseSession() can be called!");
+		if (this.isSessionStarting) {
+			SogamoAPI.Log(LogLevel.ERROR, "Cannot CloseSession while a session is still starting up!");
 			return;
 		}
 		
 		this.currentSession = null;
-		
 		SogamoAPI.ConvertNextOfflineSession(this.allSessions, 0, this.apiKey, this.playerId, (string errorString) => {	 
 			this.Flush((string flushErrorString) => {
 				SaveSessionsData(this.allSessions, this.sessionDataFilePath, false);
@@ -483,12 +487,14 @@ public sealed class SogamoAPI
 		if (this.currentSession != null) {
 			if (this.IsCurrentSessionTemporary()) {
 				Authenticate(this.apiKey, this.playerId, (SogamoAuthenticationResponse authenticationResponse, string errorString)=> {
-					if (authenticationResponse != null) {				
+					if (authenticationResponse != null) {	
 						ConvertOfflineSession(this.currentSession, authenticationResponse);					
 					}
 					
 					this.playerDict["platform"] = this.platformId;
 					this.PrivateTrackEvent("session", this.playerDict, this.currentSession);					
+					
+					this.isSessionStarting = false;
 				});				
 			} else {
 				SogamoAPI.Log(LogLevel.MESSAGE, "Current session is still valid. No new session key required");
@@ -496,17 +502,12 @@ public sealed class SogamoAPI
 				playerDict["platform"] = this.platformId;
 				this.PrivateTrackEvent("session", playerDict, this.currentSession);
 //				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
+				
+				this.isSessionStarting = false;
 			}
 		} else {
-			SogamoAPI.Log(LogLevel.MESSAGE, "No session detected. Creating a new one...");
-			Authenticate(this.apiKey, this.playerId, (SogamoAuthenticationResponse authenticationResponse, string errorString)=> {
-				if (authenticationResponse != null) {
-					ConvertOfflineSession(this.currentSession, authenticationResponse);
-				}
-				
-				this.playerDict["platform"] = this.platformId;
-				this.PrivateTrackEvent("session", this.playerDict, this.currentSession);				
-			});
+			SogamoAPI.Log(LogLevel.ERROR, "Temporary session was not created properly!");
+			this.isSessionStarting = false;
 		}		
 		
 		if (!this.allSessions.Contains(this.currentSession)) {
@@ -603,7 +604,7 @@ public sealed class SogamoAPI
 	private static void SaveSessionsData(List<SogamoSession> sessions, string sessionDataFilePath, bool currentSessionExists)
 	{
 		if (sessions == null || sessions.Count == 0) {
-			SogamoAPI.Log(LogLevel.ERROR, "No Sessions Data to save!");
+			SogamoAPI.Log(LogLevel.MESSAGE, "No Sessions Data to save!");
 			return;
 		}
 		
