@@ -8,6 +8,7 @@ using System.Collections.Generic;
 public class SogamoTest : MonoBehaviour {
 	
 	private System.Diagnostics.Stopwatch stopWatch;
+	private bool hasSessionStarted = false;
 		
 	// Use this for initialization
 	void Start () {		
@@ -194,17 +195,13 @@ public class SogamoTest : MonoBehaviour {
 		
 		this.StartTimer();
 		SogamoAPI.Instance.StartSession(apiKey, playerId, userDetails);		
+		this.hasSessionStarted = true;
 		this.StopTimer();		
 		Debug.Log("Test 11 - Starting a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
 				
-//		 Sleep this thead for 2000ms to allow time for the StartSession to finish executing in the background
+//		 Sleep this thead to allow time for the StartSession to finish executing in the background
 		System.Threading.Thread.Sleep(2000);
 		
-		this.StartTimer();
-		SogamoAPI.Instance.CloseSession();	
-		this.StopTimer();		
-		Debug.Log("Test 12 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");		
-
 		this.StartTimer();
 		SogamoAPI.SogamoSuggestionResponseEventHandler responseHandler = (eventArgs) => 
 		{			
@@ -222,7 +219,14 @@ public class SogamoTest : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-	
+		// Close session can only be called once StartSession has successfully finished
+		if (this.hasSessionStarted) {
+			if (SogamoAPI.Instance.IsSessionStarting == false) {
+				SogamoAPI.Instance.CloseSession();	
+				this.hasSessionStarted = false;
+				Debug.Log("Test 12 - Closing a Session.");									
+			}
+		}	
 	}
 	
 	#region Convenience methods
