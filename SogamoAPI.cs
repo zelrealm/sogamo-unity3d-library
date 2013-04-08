@@ -61,6 +61,8 @@ public sealed class SogamoAPI
 	public delegate void SogamoFlushCompleteHandler(string errorString);
 	public delegate void SogamoConvertOfflineSessionsCompleteHandler(string errorString);
 	
+	private delegate void SogamoGenericCompleteHandler();
+	
    	private SogamoAPI()
    	{
 		this.sessionDataFilePath = Application.persistentDataPath + Path.DirectorySeparatorChar + SESSIONS_DATA_FILE_NAME;		
@@ -113,7 +115,14 @@ public sealed class SogamoAPI
 
 		this.ValidateStartSession();
 		try {
-			this.GetNewSessionIfNeeded();	
+			this.GetNewSessionIfNeeded( () => {
+				SogamoAPI.ConvertNextOfflineSession(this.allSessions, 0, this.apiKey, this.playerId, (string errorString) => {
+					if (errorString != null) {
+						SogamoAPI.Log(LogLevel.ERROR, errorString);
+					}
+					this.isSessionStarting = false;
+				});							
+			});	
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
 			this.isSessionStarting = false;
@@ -481,20 +490,20 @@ public sealed class SogamoAPI
 	#endregion
 	
 	#region Session Creation / Renewal	
-	private void GetNewSessionIfNeeded()
+	private void GetNewSessionIfNeeded(SogamoGenericCompleteHandler handler)
 	{
 		// If there is an existing session, check to see if it is still valid
 		if (this.currentSession != null) {
 			if (this.IsCurrentSessionTemporary()) {
 				Authenticate(this.apiKey, this.playerId, (SogamoAuthenticationResponse authenticationResponse, string errorString)=> {
 					if (authenticationResponse != null) {	
-						ConvertOfflineSession(this.currentSession, authenticationResponse);					
+						ConvertOfflineSession(this.currentSession, authenticationResponse);
 					}
 					
 					this.playerDict["platform"] = this.platformId;
 					this.PrivateTrackEvent("session", this.playerDict, this.currentSession);					
 					
-					this.isSessionStarting = false;
+					handler();
 				});				
 			} else {
 				SogamoAPI.Log(LogLevel.MESSAGE, "Current session is still valid. No new session key required");
@@ -503,11 +512,11 @@ public sealed class SogamoAPI
 				this.PrivateTrackEvent("session", playerDict, this.currentSession);
 //				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
 				
-				this.isSessionStarting = false;
+				handler();
 			}
 		} else {
 			SogamoAPI.Log(LogLevel.ERROR, "Temporary session was not created properly!");
-			this.isSessionStarting = false;
+			handler();
 		}		
 		
 		if (!this.allSessions.Contains(this.currentSession)) {
