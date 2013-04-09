@@ -27,7 +27,7 @@ public class SogamoAPIDefinitions
 	private void LoadAPIDefinitionsData(string definitionsFilePath)
 	{
 		if (string.IsNullOrEmpty(definitionsFilePath)) {
-			SogamoAPI.Log(SogamoAPI.LogLevel.ERROR, "API Definitions File Path is wrong!");
+			SogamoAPI.Log(SogamoAPI.LogLevel.ERROR, "API Definitions File Path is empty!");
 			return;			
 		}
 		
