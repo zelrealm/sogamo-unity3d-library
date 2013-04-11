@@ -46,7 +46,7 @@ public class SogamoTest : MonoBehaviour {
 		{
 			{"sessionId", "1234"},
 			{"playerId", "8304460"},
-			{"logCollectorURL", "sogamo-data-collector.herokuapp.com/"},
+			{"logCollectorURL", "dc-us-east.sogamo.com/"},
 			{"suggestionServerURL", "sogamo-x10.herokuapp.com/"},
 			{"gameId", 1024},
 			{"startDate", DateTime.Now},
@@ -58,7 +58,7 @@ public class SogamoTest : MonoBehaviour {
 		{
 			{"sessionId", "1235"},
 			{"playerId", "8304460"},
-			{"logCollectorURL", "sogamo-data-collector.herokuapp.com/"},
+			{"logCollectorURL", "dc-us-east.sogamo.com/"},
 			{"suggestionServerURL", "sogamo-x10.herokuapp.com/"},
 			{"gameId", 1024},
 			{"startDate", DateTime.Now},
@@ -220,7 +220,7 @@ public class SogamoTest : MonoBehaviour {
 			responseHandler);
 		this.StopTimer();
 		Debug.Log("Test 14 - Suggestion (Async) Test\nCompleted (" + stopWatch.ElapsedMilliseconds + "ms)");
-		
+				
 //		SogamoAPI.Instance.FlushInterval = 10;
 	}
 	

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Net;
 using System.Text;
 using UnityEngine;
 using System.Timers;
@@ -17,7 +16,7 @@ public sealed class SogamoAPI
 	// Constants
 	private string SESSIONS_DATA_FILE_NAME = "sogamo_sessions.xml";
 	private string API_DEFINITIONS_FILE_NAME = "sogamo_api_definitions.xml";		
-	private static string AUTHENTICATION_SERVER_URL = "http://auth.sogamo.com";
+	private static string AUTHENTICATION_SERVER_URL = "auth.sogamo.com";
 	private static string BATCH_SUFFIX = "batch";	
 	private int SESSION_TIME_OUT_PERIOD = 43200;
 	
@@ -230,10 +229,13 @@ public sealed class SogamoAPI
 					SogamoAPI.Log(LogLevel.ERROR, "(SUGGESTION BACKGROUND) " + e.Error);			
 					handler(new SogamoSuggestionResponseEventArgs(null, e.Error));
 				} else {
+					if (e.Result == null) {
+						throw new Exception("Result cannot be null!");
+					}
 					handler(new SogamoSuggestionResponseEventArgs(e.Result as SogamoSuggestionResponse, null));
 				}
 			} catch (Exception exception) {
-				Debug.Log("SogamoSuggestionResponseEventHandler Exception: " + exception);
+				SogamoAPI.Log(LogLevel.ERROR ,"(SogamoSuggestionResponseEventHandler): " + exception);
 			}
 		};
 		backgroundWorker.RunWorkerAsync();		
@@ -243,21 +245,19 @@ public sealed class SogamoAPI
 	{
 		SogamoSuggestionResponse suggestionResponse = null;
 		
-		using (SogamoWebClient client = new SogamoWebClient()) 
-		{
-			string requestString = string.Format("http://{0}?apiKey={1}&playerId={2}&suggestionType={3}", 
-				suggestionServerURL, apiKey, playerId, suggestionType);
-			string responseString = client.DownloadString(requestString);
-			// Check response string is not empty
-			if (!string.IsNullOrEmpty(responseString)) {
-				object jsonResponseObject = Json.Deserialize(responseString);
-				// Check decided JSON format is as expected, a Dictionary<string, object>
-				if (jsonResponseObject is Dictionary<string, object>) {
-					// Wrap JSON response into a SogamoSuggesionResponse
-					suggestionResponse = SogamoSuggestionResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
-				}
-			}			
-		} 
+		string requestString = string.Format("/?apiKey={0}&playerId={1}&suggestionType={2}", apiKey, playerId, 
+			suggestionType);
+		SogamoResponse response = SogamoRequest.PerformRequest(suggestionServerURL, requestString);
+		string responseString = response.ResponseString;
+		// Check response string is not empty
+		if (!string.IsNullOrEmpty(responseString)) {
+			object jsonResponseObject = Json.Deserialize(responseString);
+			// Check decided JSON format is as expected, a Dictionary<string, object>
+			if (jsonResponseObject is Dictionary<string, object>) {
+				// Wrap JSON response into a SogamoSuggesionResponse
+				suggestionResponse = SogamoSuggestionResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
+			}
+		}			 
 		
 		return suggestionResponse;
 	}
@@ -308,25 +308,28 @@ public sealed class SogamoAPI
 		SogamoAuthenticationResponse authenticationResponse = null;
 		
 		try {
-			using (SogamoWebClient client = new SogamoWebClient()) 
-			{
-				string requestString = 
-					string.Format("{0}?apiKey={1}&playerId={2}", AUTHENTICATION_SERVER_URL, apiKey, playerId);
-				string responseString = client.DownloadString(requestString);
-				// Check response string is not empty
-				if (!string.IsNullOrEmpty(responseString)) {
-					object jsonResponseObject = Json.Deserialize(responseString);
-					// Check decided JSON format is as expected, a Dictionary<string, object>
-					if (jsonResponseObject is Dictionary<string, object>) {
-						// Wrap JSON response into a SogamoAuthenticationResponse
-						try {
-							authenticationResponse = 
-								SogamoAuthenticationResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
-						} catch (Exception exception) {
-							SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
-						}						
-					}
+			string requestString = 
+				string.Format("/?apiKey={0}&playerId={1}", apiKey, playerId);
+			SogamoResponse response = SogamoRequest.PerformRequest(AUTHENTICATION_SERVER_URL, requestString);
+			string responseString = response.ResponseString;
+			
+			// Check response string is not empty
+			if (!string.IsNullOrEmpty(responseString)) {
+				object jsonResponseObject = Json.Deserialize(responseString);
+				// Check decided JSON format is as expected, a Dictionary<string, object>
+				if (jsonResponseObject is Dictionary<string, object>) {
+					// Wrap JSON response into a SogamoAuthenticationResponse
+					try {
+						authenticationResponse = 
+							SogamoAuthenticationResponse.ReadFromDictionary((Dictionary<string, object>)jsonResponseObject);
+					} catch (Exception exception) {
+						SogamoAPI.Log(LogLevel.ERROR, exception.ToString());
+					}						
+				} else {
+					throw new Exception("Response JSON format is incorrect! " + responseString);
 				}
+			} else {
+				throw new Exception("Response string is empty!");
 			}
 		} catch (Exception e) {
 			// Failed Request
@@ -462,8 +465,6 @@ public sealed class SogamoAPI
 		List<SogamoSession> sessionsToRemove = new List<SogamoSession>();
 		// Convert each session's event into an array of JSON strings
 		foreach (SogamoSession session in sessions) {
-			string logCollectorURL = session.LogCollectorURL;
-			string flushURLString = string.Format("http://{0}/{1}?", logCollectorURL.TrimEnd(new char[]{'/'}), BATCH_SUFFIX);					
 			List<string> jsonEvents = session.ConvertEventsToJSONList();
 			
 			// if jsonEvents is empty, mark it for removal and skip this loop iteration
@@ -472,30 +473,37 @@ public sealed class SogamoAPI
 				continue;
 			}
 			
-			StringBuilder urlString = new StringBuilder();
-			urlString.Append(flushURLString);
+			// If session is marked offline, skip it 
+			if (session.IsOfflineSession) {
+				SogamoAPI.Log(LogLevel.WARNING, "Cannot flush offline session " + session.SessionId);
+				continue;
+			}
+			
+			StringBuilder flushRequest = new StringBuilder();
+			flushRequest.AppendFormat("/{0}?", BATCH_SUFFIX);
 						
 			// Add each event as a param to the url string
 			for (int i = 0; i < jsonEvents.Count; i++) {				
 				string encodedJSONEvent = string.Format("{0}={1}&", i, Uri.EscapeDataString(jsonEvents[i]));
-				urlString.Append(encodedJSONEvent);
+				flushRequest.Append(encodedJSONEvent);
 //				SogamoAPI.Log(LogLevel.MESSAGE ,jsonEvents[i]);
 			}
 			
 			// Delete trailing & symbol
-			urlString = urlString.Remove(urlString.Length-1, 1);			
-//			SogamoAPI.Log("FINAL URL for Session : " + session.sessionId + " = " + urlString);
+			flushRequest = flushRequest.Remove(flushRequest.Length-1, 1);			
+//			SogamoAPI.Log("Flush Request for Session : " + session.sessionId + " = " + flushRequest);
 			
 			// Attempt to send aggregated session data
-			try {
-				using (SogamoWebClient client = new SogamoWebClient()) 
-				{
-					client.DownloadString(urlString.ToString());
+			try {				
+				SogamoResponse response = SogamoRequest.PerformRequest(session.LogCollectorURL, flushRequest.ToString());
+				if (response.Code == 200) {
 					sessionsToRemove.Add(session);
-					SogamoAPI.Log(LogLevel.MESSAGE, "Session " + session.SessionId + " successfully sent!");
-				}				
+					SogamoAPI.Log(LogLevel.MESSAGE, "Session " + session.SessionId + " successfully sent!");									
+				} else {
+					SogamoAPI.Log(LogLevel.ERROR, "(Flushing Response) " + response.RawResponseString);
+				}
 			} catch (Exception exception) {
-				SogamoAPI.Log(LogLevel.ERROR, "(Flushing)" + exception);
+				SogamoAPI.Log(LogLevel.ERROR, "(Flushing) " + exception);
 				break;
 			}
 		}
@@ -771,7 +779,7 @@ public sealed class SogamoAPI
 		return newGuid.ToString();
 	}
 	#endregion
-	
+		
 	#region Convenience Methods
 	private bool IsCurrentSessionTemporary()
 	{
@@ -881,7 +889,6 @@ public sealed class SogamoAPI
 		
 		try {
 			result = ConvertOfflineSessions(sessions, apiKey, playerId);
-//			Debug.Log("CONVERTED OFFLINE EVENT SESSION ID: " + sessions[0].Events[0].EventParams["session_id"]);
 		} catch (Exception exception) {
 			SogamoAPI.Log(LogLevel.ERROR, exception.ToString());			
 		}		
@@ -915,23 +922,6 @@ public sealed class SogamoAPI
 		SogamoAPI.GetSuggestionAsync(apiKey, playerId, suggestionType, suggestionServerURL, handler);
 	}
 	
-	#endregion
-	
-	#region WebClient Subclass
-  	private class SogamoWebClient : WebClient
-    {
-		public SogamoWebClient()
-        {
-
-        }
-
-        protected override WebRequest GetWebRequest(Uri uri)
-        {
-            WebRequest w = base.GetWebRequest(uri);
-            w.Timeout = 10 * 1000; // 10s
-            return w;
-        }
-    }	
 	#endregion
 }
 
