@@ -4,14 +4,10 @@ using UnityEngine;
 using System.Net.Sockets;
 
 public class SogamoRequest : TcpClient
-{
+{	
 	public static SogamoResponse PerformRequest(string host, string request)
 	{
-		return PerformRequest("GET", host, request);
-	}
-	
-	public static SogamoResponse PerformRequest(string method, string host, string request)
-	{
+		string method = "GET";
 		StringBuilder completeRequestString = new StringBuilder();
 		completeRequestString.AppendFormat("{0} {1} HTTP/1.1", method, request);
 		completeRequestString.AppendFormat("\r\nHost: {0}", host);
