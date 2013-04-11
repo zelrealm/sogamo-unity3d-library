@@ -7,6 +7,9 @@ public class SogamoRequest : TcpClient
 {	
 	public static SogamoResponse PerformRequest(string host, string request)
 	{
+		// Remove any / from the host string
+		host = host.TrimEnd('/');
+		
 		string method = "GET";
 		StringBuilder completeRequestString = new StringBuilder();
 		completeRequestString.AppendFormat("{0} {1} HTTP/1.1", method, request);

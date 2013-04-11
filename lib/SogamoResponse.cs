@@ -51,6 +51,13 @@ public class SogamoResponse
 		// Process Response String (if any)
 		int indexOfDataLine = indexOfCRLFBreak + 1;
 		if (indexOfDataLine < responseLines.Length) {
+			// Fix for a weird bug where the characters '9d' are inserted in the line above the actual Data
+			if (responseLines[indexOfDataLine].Equals("9d")) {
+				indexOfDataLine += 1;
+				if (indexOfDataLine >= responseLines.Length) {
+					throw new Exception("Response is invalid!");
+				}
+			}
 			this.responseString = responseLines[indexOfDataLine];
 		}
 						
