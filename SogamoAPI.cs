@@ -552,14 +552,8 @@ public sealed class SogamoAPI
 //				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
 			}
 		} else {
-			SogamoAPI.Log(LogLevel.MESSAGE, "No session detected. Creating a new one...");
-			SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
-			if (authenticationResponse != null) {
-				ConvertOfflineSession(this.currentSession, authenticationResponse);
-			}
-			
-			this.playerDict["platform"] = this.platformId;
-			this.PrivateTrackEvent("session", this.playerDict, this.currentSession);
+			SogamoAPI.Log(LogLevel.ERROR, "Temporary session was not created properly!");
+			return;
 		}		
 		
 		if (!this.allSessions.Contains(this.currentSession)) {
