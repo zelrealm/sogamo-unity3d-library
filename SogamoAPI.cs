@@ -924,4 +924,3 @@ public sealed class SogamoAPI
 	
 	#endregion
 }
-

@@ -126,30 +126,6 @@ _Note: This method runs asynchronously, so it will return immediately._
 	SogamoAPI.Instance.Flush();
 	
 ## Suggestions ##
-There are two ways to request suggestions via the SogamoAPI.
-
-### Synchronous Request ###
-The GetSuggestion method is a synchronous call and will therefore block the main thread. This is not the recommended way to request suggestions, but it included here as it is the only option for javascript users. Refer to the 'Asynchronous Request' section below.
-
-If the request is unsuccessful, the GetSuggestion() method will return null. **Always check if the return value is null before using it.**
-
-####C\# ####
-
-	string suggestionType = A_SUGGESTION_TYPE;
-	SogamoSuggestionResponse suggestionResponse = SogamoAPI.Instance.GetSuggestion(suggestionType);
-	if (suggestionResponse != null) {
-		string suggestion = suggestionResponse.Suggestion;
-	}
-
-#### Javascript ####
-
-	var suggestionType : String = A_SUGGESTION_TYPE;
-	var suggestionResponse : SogamoSuggestionResponse = SogamoAPI.Instance.GetSuggestion(suggestionType);
-	if (suggestionResponse != null) {
-		var suggestion : String = suggestionResponse.Suggestion;
-	}
-	
-### Asynchronous Request ###
 The GetSuggestionAsync method is (as the name suggests) asynchronous and uses a delegate to handle the callback. 
 
 If the asynchronous request is unsucessful, the Error property of eventArgs will contain the relevant Exception. If the request suceeds, the SuggestionResponse property will contain a valid SogamoSuggestionResponse.
@@ -176,6 +152,6 @@ _Note: This option is not available to javascript users._
 
 ## Performance Implications ##
 
-The Sogamo Unity3D plugin runs all of its major functions (Start / Closing a session, flushing data) on a background thread, so it does not affect the performance of your application.
+The Sogamo Unity3D plugin runs all of its network requests via a WWW coroutine, so it will have minimal impact on the performance of your application.
 
 [Final Folder Structure]:https://github.com/zelrealm/sogamo-unity3d-library/raw/master/images/Final%20Folder%20Structure.jpg "Final Folder Structure"
