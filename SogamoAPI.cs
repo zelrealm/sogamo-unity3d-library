@@ -107,6 +107,7 @@ public sealed class SogamoAPI
 				SogamoAPI.Log(LogLevel.ERROR, "(BACKGROUND) " + e.Error);
 			}
 			this.hasSessionStarted = true;
+			SogamoAPI.Log(LogLevel.MESSAGE, "Session started successfully!");
 		};
 		backgroundWorker.RunWorkerAsync();		
 	}
@@ -133,6 +134,9 @@ public sealed class SogamoAPI
 			if (e.Error != null) {
 				SogamoAPI.Log(LogLevel.ERROR, "(BACKGROUND) " + e.Error);
 			}
+			this.hasSessionStarted = false;
+			this.currentSession = this.CreateOfflineSession();
+			SogamoAPI.Log(LogLevel.MESSAGE, "Session closed successfully!");
 		};
 		backgroundWorker.RunWorkerAsync();				
 	}
@@ -535,11 +539,23 @@ public sealed class SogamoAPI
 	{
 		// If there is an existing session, check to see if it is still valid
 		if (this.currentSession != null) {
-			if (this.IsCurrentSessionTemporary() ||  this.HasCurrentSessionExpired()) {
-				SogamoAPI.Log(LogLevel.MESSAGE, ": Current session is temporary / has expired. Creating a new session...");
+			
+			if (this.IsCurrentSessionTemporary()) {
+				this.ConvertTemporaryCurrentSession();			
+			}
+			
+			if (this.HasCurrentSessionExpired()) {
+				SogamoAPI.Log(LogLevel.MESSAGE, ": Current session has expired. Creating a new session...");
+				
+				SogamoSession oldSession = this.currentSession;
+				// Add old session to allSessions
+				if (!this.allSessions.Contains(oldSession)) {
+					this.allSessions.Add(oldSession);
+				}				
+								
 				SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
 				if (authenticationResponse != null) {				
-					ConvertOfflineSession(this.currentSession, authenticationResponse);					
+					this.currentSession = this.CreateSession(authenticationResponse);
 				}
 				
 				this.playerDict["platform"] = this.platformId;
@@ -552,8 +568,14 @@ public sealed class SogamoAPI
 //				SogamoAPI.Log(LogLevel.MESSAGE, "Current session has " + this.currentSession.Events.Count + " events");				
 			}
 		} else {
-			SogamoAPI.Log(LogLevel.ERROR, "Temporary session was not created properly!");
-			return;
+			SogamoAPI.Log(LogLevel.ERROR, "Temporary session was not created properly! Creating a new one...");
+			SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
+			if (authenticationResponse != null) {				
+				this.currentSession = this.CreateSession(authenticationResponse);
+			}
+			
+			this.playerDict["platform"] = this.platformId;
+			this.PrivateTrackEvent("session", this.playerDict, this.currentSession);						
 		}		
 		
 		if (!this.allSessions.Contains(this.currentSession)) {
@@ -646,7 +668,7 @@ public sealed class SogamoAPI
 	private static void SaveSessionsData(List<SogamoSession> sessions, string sessionDataFilePath, bool currentSessionExists)
 	{
 		if (sessions == null || sessions.Count == 0) {
-			SogamoAPI.Log(LogLevel.ERROR, "No Sessions Data to save!");
+			SogamoAPI.Log(LogLevel.WARNING, "No Sessions Data to save!");
 			return;
 		}
 		
@@ -725,6 +747,28 @@ public sealed class SogamoAPI
 		}
 		
 		SogamoAPI.Log(LogLevel.MESSAGE, "Successfully converted an offline session");		
+	}
+	
+	private void ConvertTemporaryCurrentSession()
+	{
+		if (!this.IsCurrentSessionTemporary()) {
+			SogamoAPI.Log(LogLevel.ERROR, "Current session is not temporary!");
+			return;						
+		}
+		
+		if (this.currentSession == null) {
+			SogamoAPI.Log(LogLevel.ERROR, "Current session is null!");
+			return;			
+		}
+		
+		if (this.currentSession.IsOfflineSession) {
+			SogamoAPI.Log(LogLevel.MESSAGE, "Converting Current session...");
+			
+			SogamoAuthenticationResponse authenticationResponse = Authenticate(this.apiKey, this.playerId);
+			if (authenticationResponse != null) {				
+				ConvertOfflineSession(this.currentSession, authenticationResponse);					
+			}
+		}		
 	}
 	
 	private static List<SogamoEvent> ConvertOfflineEvents(List<SogamoEvent> offlineEvents, SogamoAuthenticationResponse response)

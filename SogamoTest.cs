@@ -201,8 +201,10 @@ public class SogamoTest : MonoBehaviour {
 		this.StartTimer();
 		SogamoAPI.Instance.CloseSession();	
 		this.StopTimer();		
-		Debug.Log("Test 12 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");		
+		Debug.Log("Test 12 - Closing a Session. Duration: " + stopWatch.ElapsedMilliseconds + "ms");
 		
+		System.Threading.Thread.Sleep(5000);
+				
 		this.StartTimer();
 		bool suggestionTestResult = SogamoAPI.TestSuggestion(apiKey, "1024", "buy", 
 			"sogamo-x10.herokuapp.com");
