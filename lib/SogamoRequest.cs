@@ -48,6 +48,7 @@ public class SogamoRequest : TcpClient
 		completeRequestString.AppendFormat("{0} {1} HTTP/1.1", method, endpoint);
 		completeRequestString.AppendFormat("\r\nHost: {0}", host);
 		completeRequestString.Append("\r\nConnection: close");
+		completeRequestString.Append("\r\nContent-type: application/x-www-form-urlencoded");
 		completeRequestString.Append("\r\n\r\n");
 		completeRequestString.Append(postBody);
 //		Debug.Log("POST Request\n " + completeRequestString.ToString());
