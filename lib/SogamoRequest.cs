@@ -48,10 +48,11 @@ public class SogamoRequest : TcpClient
 		completeRequestString.AppendFormat("{0} {1} HTTP/1.1", method, endpoint);
 		completeRequestString.AppendFormat("\r\nHost: {0}", host);
 		completeRequestString.Append("\r\nConnection: close");
+		completeRequestString.AppendFormat("\r\nContent-Length: {0}", CalculatePostBodyContentLength(postBody));
 		completeRequestString.Append("\r\nContent-type: application/x-www-form-urlencoded");
 		completeRequestString.Append("\r\n\r\n");
 		completeRequestString.Append(postBody);
-//		Debug.Log("POST Request\n " + completeRequestString.ToString());
+//		Debug.Log("POST Request\n" + completeRequestString.ToString());
 		
 		using(SogamoRequest sogamoRequest = new SogamoRequest())
 		{
@@ -71,6 +72,17 @@ public class SogamoRequest : TcpClient
 		        }
 		    }
 		}			
+	}
+	
+	private static long CalculatePostBodyContentLength(string postBody)
+	{
+		if (string.IsNullOrEmpty(postBody)) {
+			return 0;
+		}
+		
+		byte[] postBodyByteArray = Encoding.ASCII.GetBytes(postBody);
+		
+		return postBodyByteArray.Length;
 	}
 }
 

@@ -487,7 +487,7 @@ public sealed class SogamoAPI
 						
 			// Add each event as a param to the url string
 			for (int i = 0; i < jsonEvents.Count; i++) {				
-				string encodedJSONEvent = string.Format("{0}={1}&", i, Uri.EscapeDataString(jsonEvents[i]));
+				string encodedJSONEvent = string.Format("{0}={1}&", i, jsonEvents[i]);
 				flushRequest.Append(encodedJSONEvent);
 //				SogamoAPI.Log(LogLevel.MESSAGE ,jsonEvents[i]);
 			}
