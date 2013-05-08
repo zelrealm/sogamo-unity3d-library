@@ -17,7 +17,7 @@ public sealed class SogamoAPI
 	private string SESSIONS_DATA_FILE_NAME = "sogamo_sessions.xml";
 	private string API_DEFINITIONS_FILE_NAME = "sogamo_api_definitions.xml";		
 	private static string AUTHENTICATION_SERVER_URL = "auth.sogamo.com";
-	private static string BATCH_SUFFIX = "batch";	
+	private static string BATCH_SUFFIX = "/batch";	
 	private int SESSION_TIME_OUT_PERIOD = 43200;
 	
 	// Class Variables
@@ -251,7 +251,7 @@ public sealed class SogamoAPI
 		
 		string requestString = string.Format("/?apiKey={0}&playerId={1}&suggestionType={2}", apiKey, playerId, 
 			suggestionType);
-		SogamoResponse response = SogamoRequest.PerformRequest(suggestionServerURL, requestString);
+		SogamoResponse response = SogamoRequest.PerformGETRequest(suggestionServerURL, requestString);
 		string responseString = response.ResponseString;
 		// Check response string is not empty
 		if (!string.IsNullOrEmpty(responseString)) {
@@ -314,7 +314,7 @@ public sealed class SogamoAPI
 		try {
 			string requestString = 
 				string.Format("/?apiKey={0}&playerId={1}", apiKey, playerId);
-			SogamoResponse response = SogamoRequest.PerformRequest(AUTHENTICATION_SERVER_URL, requestString);
+			SogamoResponse response = SogamoRequest.PerformGETRequest(AUTHENTICATION_SERVER_URL, requestString);
 			string responseString = response.ResponseString;
 			
 			// Check response string is not empty
@@ -484,7 +484,6 @@ public sealed class SogamoAPI
 			}
 			
 			StringBuilder flushRequest = new StringBuilder();
-			flushRequest.AppendFormat("/{0}?", BATCH_SUFFIX);
 						
 			// Add each event as a param to the url string
 			for (int i = 0; i < jsonEvents.Count; i++) {				
@@ -499,7 +498,8 @@ public sealed class SogamoAPI
 			
 			// Attempt to send aggregated session data
 			try {				
-				SogamoResponse response = SogamoRequest.PerformRequest(session.LogCollectorURL, flushRequest.ToString());
+				SogamoResponse response = 
+					SogamoRequest.PerformPOSTRequest(session.LogCollectorURL, BATCH_SUFFIX, flushRequest.ToString());
 				if (response.Code == 200) {
 					sessionsToRemove.Add(session);
 					SogamoAPI.Log(LogLevel.MESSAGE, "Session " + session.SessionId + " successfully sent!");									
@@ -945,7 +945,7 @@ public sealed class SogamoAPI
 		bool result = true;
 		try {
 			SogamoSuggestionResponse suggestionResponse = SogamoAPI.GetSuggestion(apiKey, playerId, suggestionType, suggestionServerURL);		
-			result = suggestionResponse != null;			
+			result = (suggestionResponse != null);			
 		} catch (Exception exception) {
 			Debug.Log("TestSuggestion Error: " + exception);
 			result = false;

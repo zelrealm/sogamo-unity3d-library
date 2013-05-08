@@ -35,6 +35,7 @@ public class SogamoResponse
 	private void ProcessResponse(string rawResponseString)
 	{
 		string[] responseLines = rawResponseString.Split(new string[] { "\r\n" }, StringSplitOptions.None);
+//		SogamoAPI.Log(SogamoAPI.LogLevel.MESSAGE, "Raw Response\n " + rawResponseString);									 
 		
 		// Read Status-Line
 		string statusLine = responseLines[0]; 
